@@ -29,7 +29,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import java.util.UUID
 
 enum class PenType {
-    Pen, StrokeEraser, /*PixelEraser*/  // TODO
+    Pen,
+    Rectangle,
+    StrokeEraser,  /*PixelEraser*/  // TODO
 }
 
 data class PenConfig(
@@ -46,17 +48,23 @@ data class PathWrapper(
     private var cachedPathInvalid: MutableState<Boolean> = mutableStateOf(true),
     val color: Color,
     val width: Float,
-    val alpha: Float
+    val alpha: Float,
+    val smooth: Boolean = true
 ) {
-    val cachedPath: Path get() =
-        if ((_cachedPath.value == null) or cachedPathInvalid.value)
-            rebuildPath().value
-        else
-            _cachedPath.value!!
+    val cachedPath: Path
+        get() =
+            if ((_cachedPath.value == null) || cachedPathInvalid.value)
+                rebuildPath().value
+            else
+                _cachedPath.value!!
 
     @Suppress("UNCHECKED_CAST")
-    private fun rebuildPath(): MutableState<Path> {  // TODO: Find a way to append points to the cached path instead of complete recalculation
-        _cachedPath.value = pointsToPath(points)
+    private fun rebuildPath(): MutableState<Path> {
+        _cachedPath.value = if (smooth) {
+            pointsToPath(points)
+        } else {
+            pointsToPolyline(points)
+        }
         cachedPathInvalid.value = false
         return _cachedPath as MutableState<Path>
     }
@@ -109,7 +117,26 @@ class DrawController {
         }
 
         _pathList.lastOrNull()?.let { latestPath ->
-            latestPath.points.add(newPoint)
+            if (penConfig.penType == PenType.Rectangle) {
+                // Rectangle: build polygon from start point and current point
+                val start = latestPath.points.firstOrNull() ?: return
+
+                val sx = start.x
+                val sy = start.y
+                val ex = newPoint.x
+                val ey = newPoint.y
+
+                latestPath.points.clear()
+                latestPath.points.add(start)                 // top-left
+                latestPath.points.add(Offset(ex, sy))        // top-right
+                latestPath.points.add(Offset(ex, ey))        // bottom-right
+                latestPath.points.add(Offset(sx, ey))        // bottom-left
+                latestPath.points.add(start)                 // close polygon
+            } else {
+                // Freehand pen
+                latestPath.points.add(newPoint)
+            }
+
             latestPath.invalidatePath()
         }
     }
@@ -123,12 +150,15 @@ class DrawController {
             return
         }
 
-        _pathList.add(PathWrapper(
-            points = mutableStateListOf(newPoint),
-            color = penConfig.color,
-            width = penConfig.width,
-            alpha = penConfig.alpha
-        ))
+        _pathList.add(
+            PathWrapper(
+                points = mutableStateListOf(newPoint),
+                color = penConfig.color,
+                width = penConfig.width,
+                alpha = penConfig.alpha,
+                smooth = penConfig.penType != PenType.Rectangle
+            )
+        )
     }
 
     fun finishPath() {
@@ -143,7 +173,8 @@ class DrawController {
         }
 
         redoStack.clear()
-        addToUndoStack(DrawAction.AddPath(latestPath))  // Shallow copy, we aren't touching its cachedPath. Undo/redo methods below depend on shallow copying.
+        // Shallow copy, we aren't touching its cachedPath. Undo/redo methods below depend on shallow copying.
+        addToUndoStack(DrawAction.AddPath(latestPath))
         updateUndoRedoState()
         updateClearPathsState()
     }

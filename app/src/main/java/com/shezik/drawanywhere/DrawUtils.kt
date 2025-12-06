@@ -73,3 +73,13 @@ fun pointsToPath(points: List<Offset>) = Path().apply {
     }
     lineTo(points.last().x, points.last().y)
 }
+
+fun pointsToPolyline(points: List<Offset>) = Path().apply {
+    if (points.isEmpty())
+        return@apply
+
+    moveTo(points.first().x, points.first().y)
+    points.drop(1).forEach { point ->
+        lineTo(point.x, point.y)
+    }
+}

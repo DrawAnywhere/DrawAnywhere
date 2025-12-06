@@ -9,6 +9,7 @@
     <string name="tools">Tools</string>
     <string name="pen">Pen</string>
     <string name="stroke_eraser">Stroke Eraser</string>
+    <string name="rectangle">Rectangle</string>
     <string name="color">Color</string>
     <string name="width">Width</string>
     <string name="opacity">Opacity</string>
