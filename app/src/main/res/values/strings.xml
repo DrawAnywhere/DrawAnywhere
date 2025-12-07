@@ -8,6 +8,7 @@
     <string name="expand_toolbar">Expand toolbar</string>
     <string name="tools">Tools</string>
     <string name="pen">Pen</string>
+    <string name="rectangle">Rectangle</string>
     <string name="stroke_eraser">Stroke Eraser</string>
     <string name="color">Color</string>
     <string name="width">Width</string>

@@ -40,6 +40,7 @@ import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.CropSquare
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -582,7 +583,8 @@ private fun PenTypeSelector(
         )
 
         val penTypes = listOf(
-            PenType.Pen to stringResource(R.string.pen),
+            PenType.Rectangle    to stringResource(R.string.rectangle),
+            PenType.Pen          to stringResource(R.string.pen),
             PenType.StrokeEraser to stringResource(R.string.stroke_eraser)
         )
 
@@ -992,25 +994,29 @@ private fun createAllToolbarButtons(
         ),
 
         ToolbarButton(
-            id = "tool_controls",
-            icon = when (uiState.currentPenType) {
-                PenType.Pen -> Icons.Default.Edit
-                PenType.StrokeEraser -> InkEraser24Px
-            },
-            contentDescription = stringResource(R.string.tool_controls),
-            popupPages = listOf(
-                { PenTypeSelector(
-                    currentPenType = uiState.currentPenType,
-                    onPenTypeSwitch = onPenTypeSwitch
-                ) },
-
-                { PenControls(
-                    penConfig = uiState.currentPenConfig,
-                    onStrokeWidthChange = onStrokeWidthChange,
-                    onAlphaChange = onAlphaChange
-                ) }
+    id = "tool_controls",
+    icon = when (uiState.currentPenType) {
+        PenType.Rectangle    -> Icons.Outlined.CropSquare
+        PenType.Pen          -> Icons.Default.Edit
+        PenType.StrokeEraser -> InkEraser24Px
+    },
+    contentDescription = stringResource(R.string.tool_controls),
+    popupPages = listOf(
+        {
+            PenTypeSelector(
+                currentPenType = uiState.currentPenType,
+                onPenTypeSwitch = onPenTypeSwitch
             )
-        ),
+        },
+        {
+            PenControls(
+                penConfig = uiState.currentPenConfig,
+                onStrokeWidthChange = onStrokeWidthChange,
+                onAlphaChange = onAlphaChange
+            )
+        }
+    )
+),
 
         ToolbarButton(
             id = "color_picker",
