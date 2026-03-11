@@ -10,6 +10,10 @@ android {
     namespace = "com.shezik.drawanywhere"
     compileSdk = 36
 
+    lint {
+        disable += "NullSafeMutableLiveData"
+    }
+
     defaultConfig {
         applicationId = "com.shezik.drawanywhere"
         minSdk = 26
