@@ -35,7 +35,7 @@ fun Modifier.stylusAwareDrawing(
         val initialEvent = awaitPointerEvent()
         val initialChange = initialEvent.changes.firstOrNull()
 
-        if (initialChange == null || !initialChange.pressed)
+        if (initialChange == null || !initialChange.pressed || initialChange.type != PointerType.Stylus)
             return@awaitEachGesture
 
         val strokeModifier = when {
