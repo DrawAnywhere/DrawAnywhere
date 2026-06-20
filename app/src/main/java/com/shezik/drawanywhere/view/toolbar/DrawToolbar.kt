@@ -92,7 +92,9 @@ fun DrawToolbar(
                     modifier = Modifier.padding(Spacing.sm),
                     uiState = uiState,
                     allButtonsMap = allButtonsMap,
-                    onExpandToggleClick = viewModel::toggleSecondDrawer
+                    onExpandToggleClick = viewModel::toggleSecondDrawer,
+                    onTogglePopup = viewModel::togglePopup,
+                    activePopupId = uiState.activePopupId
                 )
             }
         }
@@ -104,7 +106,9 @@ internal fun ToolbarButtonsContainer(
     modifier: Modifier = Modifier,
     uiState: com.shezik.drawanywhere.UiState,
     allButtonsMap: Map<String, ToolbarButton>,
-    onExpandToggleClick: () -> Unit
+    onExpandToggleClick: () -> Unit,
+    onTogglePopup: (String) -> Unit,
+    activePopupId: String?
 ) {
     val orientation = uiState.toolbarOrientation
     val isFirstDrawerOpen = uiState.firstDrawerOpen
@@ -132,13 +136,13 @@ internal fun ToolbarButtonsContainer(
 
     @Composable
     fun ToolbarContent() {
-        standaloneButtonIds.forEach { id -> allButtonsMap[id]?.let { RenderButton(it, popupAlignment) } }
+        standaloneButtonIds.forEach { id -> allButtonsMap[id]?.let { RenderButton(it, onTogglePopup, activePopupId) } }
         firstDrawerButtonIds.forEach { id ->
             allButtonsMap[id]?.let { btn ->
                 AnimatedVisibility(isFirstDrawerOpen,
                     enter = fadeIn(tween(300)) + scaleIn(tween(300), initialScale = 0.5f),
                     exit = fadeOut(tween(300)) + scaleOut(tween(300), targetScale = 0.5f)
-                ) { RenderButton(btn, popupAlignment) }
+                ) { RenderButton(btn, onTogglePopup, activePopupId) }
             }
         }
         AnimatedVisibility(isDividerVisible, enter = fadeIn(tween(300)), exit = fadeOut(tween(300))) {
@@ -155,7 +159,7 @@ internal fun ToolbarButtonsContainer(
                 AnimatedVisibility(visible,
                     enter = fadeIn(tween(300)) + scaleIn(tween(300), initialScale = 0.5f),
                     exit = fadeOut(tween(300)) + scaleOut(tween(300), targetScale = 0.5f)
-                ) { RenderButton(btn, popupAlignment) }
+                ) { RenderButton(btn, onTogglePopup, activePopupId) }
             }
         }
         AnimatedVisibility(isExpandButtonVisible,

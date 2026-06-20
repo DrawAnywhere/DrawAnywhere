@@ -64,7 +64,8 @@ data class UiState(
     val secondDrawerButtons: Set<String> = setOf(
         "passthrough", "redo", "settings"
     ),
-    val secondDrawerPinnedButtons: Set<String> = emptySet()
+    val secondDrawerPinnedButtons: Set<String> = emptySet(),
+    val activePopupId: String? = null
 ) {
     val currentPenConfig: PenConfig
         get() = penConfigs[currentPenType] ?: PenConfig()
@@ -296,6 +297,13 @@ class DrawViewModel(
         return if (pinned) currentPinned + id else currentPinned - id
     }
 
+    fun togglePopup(id: String) {
+        _uiState.update { it.copy(activePopupId = if (it.activePopupId == id) null else id) }
+    }
+
+    fun closePopup() =
+        _uiState.update { it.copy(activePopupId = null) }
+
     fun setAutoClearCanvas(state: Boolean) =
         _uiState.update { it.copy(autoClearCanvas = state) }
 
@@ -334,8 +342,8 @@ class DrawViewModel(
     fun onDismissDragMove(fingerPosInToolbar: Offset) {
         val pos = serviceState.value.toolbarPosition
         val active = containsDismissTarget(
-            (pos.x + fingerPosInToolbar.x).toInt(),
-            (pos.y + fingerPosInToolbar.y).toInt()
+            pos.x.toInt(),
+            pos.y.toInt()
         )
         _dismissTarget.value = DismissTarget.Visible(active)
     }

@@ -31,6 +31,9 @@ import android.view.View
 import android.view.WindowInsets
 import android.view.WindowManager
 import android.view.WindowManager.LayoutParams
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.unit.round
@@ -40,6 +43,9 @@ import com.shezik.drawanywhere.view.DismissTargetView
 import com.shezik.drawanywhere.view.ToolbarLifecycleOwner
 import com.shezik.drawanywhere.view.canvas.NativeDrawCanvasView
 import com.shezik.drawanywhere.view.toolbar.DrawToolbar
+import com.shezik.drawanywhere.ui.theme.DrawAnywhereTheme
+import com.shezik.drawanywhere.view.toolbar.PopupOverlay
+import com.shezik.drawanywhere.view.toolbar.createAllToolbarButtons
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -61,6 +67,7 @@ class MainService : Service() {
     private lateinit var canvasView: NativeDrawCanvasView
     private lateinit var toolbarView: ComposeView
     private lateinit var dismissTargetView: DismissTargetView
+    private lateinit var popupView: ComposeView
     private lateinit var preferencesManager: PreferencesManager
     private lateinit var viewModel: DrawViewModel
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -79,7 +86,12 @@ class MainService : Service() {
             initialUiState = initialUiState,
             initialServiceState = initialServiceState,
             stopService = { stopSelf() },
-            containsDismissTarget = { x, y -> dismissTargetView.containsScreenPoint(x, y) },
+            containsDismissTarget = { x, y ->
+                dismissTargetView.containsScreenPoint(
+                    x + toolbarView.width / 2,
+                    y + toolbarView.height / 2
+                )
+            },
         )
 
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
@@ -106,10 +118,6 @@ class MainService : Service() {
 
         // -------- Setup toolbar (Compose) --------
         toolbarLifecycleOwner.start()
-        toolbarView = ComposeView(this).apply {
-            setContent { DrawToolbar(viewModel = viewModel) }
-        }
-        toolbarLifecycleOwner.attachTo(toolbarView)
 
         val toolbarParams = LayoutParams(
             LayoutParams.WRAP_CONTENT,
@@ -120,6 +128,11 @@ class MainService : Service() {
                     LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply { gravity = Gravity.TOP or Gravity.START }
+
+        toolbarView = ComposeView(this).apply {
+            setContent { DrawToolbar(viewModel = viewModel) }
+        }
+        toolbarLifecycleOwner.attachTo(toolbarView)
 
         applyToolbarPosition(toolbarParams, initialServiceState)
         // ---------------------------------------
@@ -141,9 +154,75 @@ class MainService : Service() {
         dismissTargetView.visibility = View.GONE
         // --------------------------------------------------------------------
 
+        // -------- Setup popup overlay --------
+        popupView = ComposeView(this)
+        toolbarLifecycleOwner.attachTo(popupView)
+        popupView.setContent {
+            DrawAnywhereTheme {
+                val uiState by viewModel.uiState.collectAsState()
+                val serviceState by viewModel.serviceState.collectAsState()
+                val activeId = uiState.activePopupId
+                val canUndo by viewModel.canUndo.collectAsState()
+                val canRedo by viewModel.canRedo.collectAsState()
+                val canClearCanvas by viewModel.canClearCanvas.collectAsState()
+                val lockMode by viewModel.lockMode.collectAsState()
+
+                key(activeId) {
+                    if (activeId != null) {
+                        val button = createAllToolbarButtons(
+                            uiState = uiState,
+                            canUndo = canUndo,
+                            canRedo = canRedo,
+                            canClearCanvas = canClearCanvas,
+                            onCanvasVisibilityToggle = viewModel::toggleCanvasVisibility,
+                            onCanvasPassthroughToggle = viewModel::toggleCanvasPassthrough,
+                            onClearCanvas = viewModel::clearCanvas,
+                            onUndo = viewModel::undo,
+                            onRedo = viewModel::redo,
+                            onPenTypeSwitch = viewModel::switchToPen,
+                            onColorChange = viewModel::setPenColor,
+                            onPresetColorChange = viewModel::setPresetColor,
+                            onStrokeWidthChange = viewModel::setStrokeWidth,
+                            onAlphaChange = viewModel::setStrokeAlpha,
+                            onChangeOrientation = viewModel::setToolbarOrientation,
+                            onChangeAutoClearCanvas = viewModel::setAutoClearCanvas,
+                            onChangeVisibleOnStart = viewModel::setVisibleOnStart,
+                            fingerDrawingEnabled = uiState.fingerDrawingEnabled,
+                            onChangeFingerDrawingEnabled = viewModel::setFingerDrawingEnabled,
+                            onCycleLockMode = viewModel::cycleLockMode,
+                            lockMode = lockMode,
+                            onQuitApplication = viewModel::quitApplication
+                        ).find { it.id == activeId }
+
+                        if (button != null) {
+                            PopupOverlay(
+                                popupPages = button.popupPages,
+                                toolbarPosition = serviceState.toolbarPosition,
+                                orientation = uiState.toolbarOrientation,
+                                onDismiss = viewModel::closePopup
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        val popupParams = LayoutParams(
+            LayoutParams.MATCH_PARENT,
+            LayoutParams.MATCH_PARENT,
+            LayoutParams.TYPE_APPLICATION_OVERLAY,
+            LayoutParams.FLAG_NOT_FOCUSABLE or
+                    LayoutParams.FLAG_NOT_TOUCHABLE or
+                    LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT
+        ).apply { gravity = Gravity.TOP or Gravity.START }
+        popupView.visibility = View.GONE
+        // ------------------------------------
+
+        toolbarLifecycleOwner.attachTo(popupView)
         windowManager.addView(canvasView, canvasParams)
         windowManager.addView(toolbarView, toolbarParams)
         windowManager.addView(dismissTargetView, dismissParams)
+        windowManager.addView(popupView, popupParams)
 
         // Defer toolbar position validation until layout is complete
         toolbarView.post {
@@ -157,6 +236,15 @@ class MainService : Service() {
                 applyCanvasPassthrough(canvasParams, state.canvasPassthrough)
                 windowManager.updateViewLayout(canvasView, canvasParams)
                 canvasView.visibility = if (state.canvasVisible) View.VISIBLE else View.GONE
+                if (state.activePopupId != null) {
+                    popupParams.flags = popupParams.flags and LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+                    popupView.visibility = View.VISIBLE
+                } else {
+                    popupView.visibility = View.GONE
+                }
+                if (popupView.visibility == View.VISIBLE) {
+                    windowManager.updateViewLayout(popupView, popupParams)
+                }
             }
         }
 
@@ -230,6 +318,8 @@ class MainService : Service() {
             windowManager.removeView(canvasView)
         if (::dismissTargetView.isInitialized && dismissTargetView.isAttachedToWindow)
             windowManager.removeView(dismissTargetView)
+        if (::popupView.isInitialized && popupView.isAttachedToWindow)
+            windowManager.removeView(popupView)
         toolbarLifecycleOwner.stop()
     }
 
