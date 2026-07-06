@@ -20,37 +20,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.shezik.drawanywhere.R
+import com.shezik.drawanywhere.model.PRESET_COLORS
 import com.shezik.drawanywhere.ui.theme.Spacing
 import com.godaddy.android.colorpicker.HsvColor
 import com.godaddy.android.colorpicker.harmony.ColorHarmonyMode
 import com.godaddy.android.colorpicker.harmony.HarmonyColorPicker
-
-internal val PRESET_COLORS = listOf(
-    // 2D HSV gradient: hue → columns, value ↓ rows
-    // Row 1: bright (100% saturation, high value)
-    Color(0xFFFF0000),              // red
-    Color(0xFFFF8800),              // orange
-    Color(0xFF00CC00),              // green
-    Color(0xFF00CCCC),              // cyan
-    Color(0xFF0066FF),              // blue
-    Color(0xFF9900FF),              // purple
-
-    // Row 2: mid (80% saturation, medium value)
-    Color(0xFFCC4444),              // rose
-    Color(0xFFCC8844),              // tan
-    Color(0xFF448844),              // forest
-    Color(0xFF448888),              // teal
-    Color(0xFF4444CC),              // periwinkle
-    Color(0xFF8844CC),              // orchid
-
-    // Row 3: grayscale (white → black)
-    Color.White,                    // #FFFFFF
-    Color(0xFFCCCCCC),              // light gray
-    Color(0xFF999999),              // mid gray
-    Color(0xFF666666),              // gray
-    Color(0xFF333333),              // dark gray
-    Color.Black,                    // #000000
-)
 
 @Composable
 private fun ColorSwatchButton(color: Color, isSelected: Boolean, onClick: () -> Unit) {

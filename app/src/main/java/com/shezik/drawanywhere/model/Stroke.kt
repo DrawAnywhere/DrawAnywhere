@@ -10,8 +10,17 @@ enum class StrokeModifier {
     None, PrimaryButton, SecondaryButton, Both
 }
 
+data class StrokeSample(
+    val position: Offset,
+    val pressure: Float = 1f,
+    val tilt: Float? = null,
+    val orientation: Float? = null,
+    val timeMs: Long = System.currentTimeMillis(),
+)
+
 data class Stroke(
     internal val _points: MutableList<Offset> = mutableListOf(),
+    internal val _samples: MutableList<StrokeSample> = mutableListOf(),
     val color: Color,
     val width: Float,
     val alpha: Float,
@@ -20,6 +29,21 @@ data class Stroke(
     var modifiedAt: Long = createdAt,
 ) {
     val points: List<Offset> get() = _points
+    val samples: List<StrokeSample> get() = _samples
+    val hasPressureSamples: Boolean
+        get() = _samples.size == _points.size && _samples.any { it.pressure != 1f }
+
+    fun addSample(sample: StrokeSample) {
+        _points.add(sample.position)
+        _samples.add(sample)
+    }
+
+    fun replaceSample(index: Int, sample: StrokeSample) {
+        _points[index] = sample.position
+        if (_samples.size == _points.size) {
+            _samples[index] = sample
+        }
+    }
 
     fun render(canvas: Canvas, paint: Paint) {
         if (_points.isEmpty()) return

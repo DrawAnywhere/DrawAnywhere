@@ -19,8 +19,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
+import com.shezik.drawanywhere.R
 import com.shezik.drawanywhere.DrawViewModel
 import com.shezik.drawanywhere.util.scrollFadingEdges
 import com.shezik.drawanywhere.ui.theme.DrawAnywhereTheme
@@ -61,8 +64,19 @@ fun DrawToolbar(
         onChangeOrientation = viewModel::setToolbarOrientation,
         onChangeAutoClearCanvas = viewModel::setAutoClearCanvas,
         onChangeVisibleOnStart = viewModel::setVisibleOnStart,
+        onChangeToolbarMinimized = viewModel::setToolbarMinimized,
         fingerDrawingEnabled = uiState.fingerDrawingEnabled,
         onChangeFingerDrawingEnabled = viewModel::setFingerDrawingEnabled,
+        stylusButtonScheme = uiState.stylusButtonScheme,
+        onChangeStylusButtonScheme = viewModel::setStylusButtonScheme,
+        stylusPrimaryButtonAction = uiState.stylusPrimaryButtonAction,
+        onChangeStylusPrimaryButtonAction = viewModel::setStylusPrimaryButtonAction,
+        stylusSecondaryButtonAction = uiState.stylusSecondaryButtonAction,
+        onChangeStylusSecondaryButtonAction = viewModel::setStylusSecondaryButtonAction,
+        pressureEraserEnabled = uiState.pressureEraserEnabled,
+        onChangePressureEraserEnabled = viewModel::setPressureEraserEnabled,
+        pressureEraserThreshold = uiState.pressureEraserThreshold,
+        onChangePressureEraserThreshold = viewModel::setPressureEraserThreshold,
         onCycleLockMode = viewModel::cycleLockMode,
         lockMode = lockMode,
         onQuitApplication = viewModel::quitApplication
@@ -92,7 +106,8 @@ fun DrawToolbar(
                     modifier = Modifier.padding(Spacing.sm),
                     uiState = uiState,
                     allButtonsMap = allButtonsMap,
-                    onExpandToggleClick = viewModel::toggleSecondDrawer
+                    onExpandToggleClick = viewModel::toggleSecondDrawer,
+                    onRestoreFromMinimized = { viewModel.setToolbarMinimized(false) }
                 )
             }
         }
@@ -104,7 +119,8 @@ internal fun ToolbarButtonsContainer(
     modifier: Modifier = Modifier,
     uiState: com.shezik.drawanywhere.UiState,
     allButtonsMap: Map<String, ToolbarButton>,
-    onExpandToggleClick: () -> Unit
+    onExpandToggleClick: () -> Unit,
+    onRestoreFromMinimized: () -> Unit = {},
 ) {
     val orientation = uiState.toolbarOrientation
     val isFirstDrawerOpen = uiState.firstDrawerOpen
@@ -132,6 +148,18 @@ internal fun ToolbarButtonsContainer(
 
     @Composable
     fun ToolbarContent() {
+        if (uiState.toolbarMinimized) {
+            AnimatedToolbarButton(
+                modifier = Modifier,
+                button = ToolbarButton(
+                    id = "restore",
+                    icon = Icons.Default.OpenInFull,
+                    contentDescription = androidx.compose.ui.res.stringResource(R.string.restore_toolbar),
+                    onClick = onRestoreFromMinimized,
+                )
+            )
+            return
+        }
         standaloneButtonIds.forEach { id -> allButtonsMap[id]?.let { RenderButton(it, popupAlignment) } }
         firstDrawerButtonIds.forEach { id ->
             allButtonsMap[id]?.let { btn ->

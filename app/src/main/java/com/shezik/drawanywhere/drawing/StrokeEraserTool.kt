@@ -2,6 +2,7 @@ package com.shezik.drawanywhere.drawing
 
 import androidx.compose.ui.geometry.Offset
 import com.shezik.drawanywhere.model.DrawAction
+import com.shezik.drawanywhere.model.StrokeSample
 
 /**
  * Stroke-level eraser — erases one complete stroke at a time by checking
@@ -9,20 +10,21 @@ import com.shezik.drawanywhere.model.DrawAction
  */
 class StrokeEraserTool(private val ctx: ToolContext) : StrokeTool {
 
-    override fun onStart(point: Offset) {
-        eraseAt(point)
+    override fun onStart(sample: StrokeSample) {
+        eraseAt(sample)
     }
 
-    override fun onMove(point: Offset) {
-        eraseAt(point)
+    override fun onMove(sample: StrokeSample) {
+        eraseAt(sample)
     }
 
     override fun onFinish() {
         // Each hit pushes its own EraseStroke action — nothing to do here.
     }
 
-    private fun eraseAt(point: Offset) {
-        val eraserRadius = ctx.penConfig.width / 2
+    private fun eraseAt(sample: StrokeSample) {
+        val point = sample.position
+        val eraserRadius = pressureWidth(ctx.penConfig.width, sample.pressure) / 2
         var indexToErase: Int? = null
         val strokes = ctx.strokes
         for (i in strokes.indices.reversed()) {
@@ -38,5 +40,10 @@ class StrokeEraserTool(private val ctx: ToolContext) : StrokeTool {
             ctx.pushUndo(DrawAction.EraseStroke(erased))
             ctx.notifyChanged()
         }
+    }
+
+    private fun pressureWidth(baseWidth: Float, pressure: Float): Float {
+        val normalized = pressure.coerceIn(0f, 1f)
+        return baseWidth * (0.35f + normalized * 0.65f)
     }
 }

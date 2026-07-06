@@ -19,12 +19,14 @@ package com.shezik.drawanywhere.view.canvas
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.toArgb
 import com.shezik.drawanywhere.DrawController
 import com.shezik.drawanywhere.DrawViewModel
+import com.shezik.drawanywhere.model.StylusButtonScheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -35,6 +37,11 @@ class NativeDrawCanvasView(
     private val drawController: DrawController,
     private val viewModel: DrawViewModel,
 ) : View(context) {
+
+    init {
+        isFocusable = true
+        isFocusableInTouchMode = true
+    }
 
     companion object {
         private const val FRAME_INTERVAL_MS = 16L          // ~60fps
@@ -79,6 +86,39 @@ class NativeDrawCanvasView(
 
     override fun onGenericMotionEvent(event: MotionEvent): Boolean =
         touchHandler.handleEvent(event)
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        return handleXiaomiStylusKey(event) || super.dispatchKeyEvent(event)
+    }
+
+    fun requestStylusKeyFocus() {
+        requestFocus()
+    }
+
+    private fun handleXiaomiStylusKey(event: KeyEvent): Boolean {
+        if (viewModel.uiState.value.stylusButtonScheme != StylusButtonScheme.XiaomiSmartPen) {
+            return false
+        }
+        if (!isXiaomiStylusButtonEvent(event)) return false
+        if (event.action == KeyEvent.ACTION_UP) {
+            when (event.keyCode) {
+                KeyEvent.KEYCODE_PAGE_UP ->
+                    viewModel.performStylusButtonAction(viewModel.uiState.value.stylusPrimaryButtonAction)
+                KeyEvent.KEYCODE_PAGE_DOWN ->
+                    viewModel.performStylusButtonAction(viewModel.uiState.value.stylusSecondaryButtonAction)
+            }
+            invalidate()
+        }
+        return true
+    }
+
+    private fun isXiaomiStylusButtonEvent(event: KeyEvent): Boolean {
+        if (event.keyCode != KeyEvent.KEYCODE_PAGE_UP &&
+            event.keyCode != KeyEvent.KEYCODE_PAGE_DOWN
+        ) return false
+        val deviceName = event.device?.name ?: return false
+        return deviceName.contains("Xiaomi Smart Pen", ignoreCase = true)
+    }
 
     // ── Rendering ─────────────────────────────────────────────────
 

@@ -18,11 +18,16 @@ package com.shezik.drawanywhere
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shezik.drawanywhere.model.PenConfig
 import com.shezik.drawanywhere.model.PenType
+import com.shezik.drawanywhere.model.PRESET_COLORS
 import com.shezik.drawanywhere.model.StrokeModifier
+import com.shezik.drawanywhere.model.StylusButtonAction
+import com.shezik.drawanywhere.model.StylusButtonScheme
+import com.shezik.drawanywhere.model.StrokeSample
 import com.shezik.drawanywhere.view.canvas.CanvasViewport
 import com.shezik.drawanywhere.view.canvas.LockMode
 import com.shezik.drawanywhere.view.toolbar.ToolbarOrientation
@@ -48,7 +53,13 @@ data class UiState(
     val canvasPassthrough: Boolean = false,
     val autoClearCanvas: Boolean = false,
     val visibleOnStart: Boolean = true,
+    val toolbarMinimized: Boolean = false,
     val fingerDrawingEnabled: Boolean = true,
+    val stylusButtonScheme: StylusButtonScheme = StylusButtonScheme.XiaomiSmartPen,
+    val stylusPrimaryButtonAction: StylusButtonAction = StylusButtonAction.CyclePresetColor,
+    val stylusSecondaryButtonAction: StylusButtonAction = StylusButtonAction.ToggleStrokeEraser,
+    val pressureEraserEnabled: Boolean = false,
+    val pressureEraserThreshold: Float = 0.85f,
     val recentColors: List<Color> = emptyList(),
 
     val currentPenType: PenType = PenType.Pen,
@@ -62,7 +73,7 @@ data class UiState(
         "undo", "clear", "tool_controls", "color_picker", "zoom_lock"
     ),
     val secondDrawerButtons: Set<String> = setOf(
-        "passthrough", "redo", "settings"
+        "passthrough", "redo", "minimize", "settings"
     ),
     val secondDrawerPinnedButtons: Set<String> = emptySet()
 ) {
@@ -142,8 +153,14 @@ class DrawViewModel(
 
     private var previousPenType: PenType? = null
     private var isStrokeDown: Boolean = false
+    private var stylusEraserReturnPenType: PenType = PenType.Pen
+    private var stylusLaserReturnPenType: PenType = PenType.Pen
 
     fun startStroke(point: Offset, modifier: StrokeModifier) {
+        startStroke(StrokeSample(point), modifier)
+    }
+
+    fun startStroke(sample: StrokeSample, modifier: StrokeModifier) {
         finishStroke()
 
         val newPenType = resolvePenType(modifier)
@@ -152,13 +169,17 @@ class DrawViewModel(
             switchToPen(newPenType)
         }
 
-        controller.createStroke(point)
+        controller.createStroke(sample)
         isStrokeDown = true
     }
 
     fun updateStroke(point: Offset) {
+        updateStroke(StrokeSample(point))
+    }
+
+    fun updateStroke(sample: StrokeSample) {
         if (!isStrokeDown) return
-        controller.updateLatestStroke(point)
+        controller.updateLatestStroke(sample)
     }
 
     fun finishStroke() {
@@ -209,6 +230,60 @@ class DrawViewModel(
     }
 
     fun setPresetColor(color: Color) = setPenColor(color, trackRecent = false)
+
+    fun cyclePresetColor() {
+        val currentType = uiState.value.currentPenType
+        if (currentType.isEraser) {
+            switchToPen(stylusEraserReturnPenType.takeUnless { it.isEraser } ?: PenType.Pen)
+        }
+
+        val currentColor = uiState.value.currentPenConfig.color.toArgb()
+        val currentIndex = PRESET_COLORS.indexOfFirst { it.toArgb() == currentColor }
+        val nextColor = PRESET_COLORS[(currentIndex + 1).floorMod(PRESET_COLORS.size)]
+        setPresetColor(nextColor)
+    }
+
+    fun toggleStrokeEraser() {
+        toggleTool(PenType.StrokeEraser)
+    }
+
+    fun togglePixelEraser() {
+        toggleTool(PenType.PixelEraser)
+    }
+
+    fun toggleLaser() {
+        val currentType = uiState.value.currentPenType
+        if (currentType == PenType.Laser) {
+            switchToPen(stylusLaserReturnPenType.takeUnless { it == PenType.Laser } ?: PenType.Pen)
+        } else {
+            stylusLaserReturnPenType = currentType
+            switchToPen(PenType.Laser)
+        }
+    }
+
+    fun performStylusButtonAction(action: StylusButtonAction) {
+        when (action) {
+            StylusButtonAction.None -> {}
+            StylusButtonAction.CyclePresetColor -> cyclePresetColor()
+            StylusButtonAction.ToggleStrokeEraser -> toggleStrokeEraser()
+            StylusButtonAction.TogglePixelEraser -> togglePixelEraser()
+            StylusButtonAction.Undo -> undo()
+            StylusButtonAction.Redo -> redo()
+            StylusButtonAction.ToggleCanvasVisibility -> toggleCanvasVisibility()
+            StylusButtonAction.ToggleCanvasPassthrough -> toggleCanvasPassthrough()
+            StylusButtonAction.ToggleLaser -> toggleLaser()
+        }
+    }
+
+    private fun toggleTool(toolType: PenType) {
+        val currentType = uiState.value.currentPenType
+        if (currentType == toolType) {
+            switchToPen(stylusEraserReturnPenType.takeUnless { it.isEraser } ?: PenType.Pen)
+        } else {
+            stylusEraserReturnPenType = currentType
+            switchToPen(toolType)
+        }
+    }
 
     private fun addRecentColor(color: Color) {
         val current = uiState.value.recentColors
@@ -302,8 +377,28 @@ class DrawViewModel(
     fun setVisibleOnStart(state: Boolean) =
         _uiState.update { it.copy(visibleOnStart = state) }
 
+    fun setToolbarMinimized(state: Boolean) =
+        _uiState.update { it.copy(toolbarMinimized = state) }
+
     fun setFingerDrawingEnabled(state: Boolean) =
         _uiState.update { it.copy(fingerDrawingEnabled = state) }
+
+    fun setStylusButtonScheme(scheme: StylusButtonScheme) =
+        _uiState.update { it.copy(stylusButtonScheme = scheme) }
+
+    fun setStylusPrimaryButtonAction(action: StylusButtonAction) =
+        _uiState.update { it.copy(stylusPrimaryButtonAction = action) }
+
+    fun setStylusSecondaryButtonAction(action: StylusButtonAction) =
+        _uiState.update { it.copy(stylusSecondaryButtonAction = action) }
+
+    fun setPressureEraserEnabled(state: Boolean) =
+        _uiState.update { it.copy(pressureEraserEnabled = state) }
+
+    fun setPressureEraserThreshold(threshold: Float) =
+        _uiState.update { it.copy(pressureEraserThreshold = threshold.coerceIn(0f, 1f)) }
+
+    private fun Int.floorMod(other: Int): Int = ((this % other) + other) % other
 
     // --- Viewport ---
 

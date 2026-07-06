@@ -7,7 +7,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -132,13 +134,13 @@ internal fun PopupToolbarButton(
                 properties = PopupProperties(focusable = true)
             ) {
                 Card(
-                    modifier = Modifier.wrapContentSize().width(200.dp),
+                    modifier = Modifier.wrapContentSize().width(200.dp).heightIn(max = 420.dp),
                     elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                     shape = RoundedCornerShape(Spacing.lg),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                 ) {
                     Column(
-                        modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
+                        modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(Spacing.lg),
                         verticalArrangement = Arrangement.spacedBy(Spacing.sm)
                     ) {
                         HorizontalPager(

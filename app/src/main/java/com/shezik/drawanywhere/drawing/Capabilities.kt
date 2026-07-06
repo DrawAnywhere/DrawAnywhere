@@ -24,7 +24,31 @@ interface HitTester {
 
 object PenRenderer : Renderer {
     override fun render(stroke: Stroke, canvas: Canvas, paint: Paint, now: Long) {
-        canvas.drawPath(buildPath(stroke._points), paint)
+        if (stroke.hasPressureSamples) {
+            renderPressureStroke(stroke, canvas, paint)
+        } else {
+            canvas.drawPath(buildPath(stroke._points), paint)
+        }
+    }
+
+    private fun renderPressureStroke(stroke: Stroke, canvas: Canvas, paint: Paint) {
+        val pts = stroke.points
+        val samples = stroke.samples
+        if (pts.size == 1) {
+            paint.strokeWidth = pressureWidth(stroke.width, samples[0].pressure)
+            canvas.drawPoint(pts[0].x, pts[0].y, paint)
+            return
+        }
+        pts.zipWithNext().forEachIndexed { index, (a, b) ->
+            val pressure = (samples[index].pressure + samples[index + 1].pressure) / 2f
+            paint.strokeWidth = pressureWidth(stroke.width, pressure)
+            canvas.drawLine(a.x, a.y, b.x, b.y, paint)
+        }
+    }
+
+    private fun pressureWidth(baseWidth: Float, pressure: Float): Float {
+        val normalized = pressure.coerceIn(0f, 1f)
+        return baseWidth * (0.35f + normalized * 0.65f)
     }
 
     fun buildPath(points: List<Offset>): Path {

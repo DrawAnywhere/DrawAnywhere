@@ -22,6 +22,7 @@ import com.shezik.drawanywhere.drawing.ToolContext
 import com.shezik.drawanywhere.model.DrawAction
 import com.shezik.drawanywhere.model.Stroke
 import com.shezik.drawanywhere.model.PenConfig
+import com.shezik.drawanywhere.model.StrokeSample
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -66,13 +67,21 @@ class DrawController(initialConfig: PenConfig) {
     }
 
     fun createStroke(newPoint: Offset) {
+        createStroke(StrokeSample(newPoint))
+    }
+
+    fun createStroke(sample: StrokeSample) {
         val tool = penConfig.penType.createTool(toolContext)
         activeTool = tool
-        tool.onStart(newPoint)
+        tool.onStart(sample)
     }
 
     fun updateLatestStroke(newPoint: Offset) {
-        activeTool?.onMove(newPoint)
+        updateLatestStroke(StrokeSample(newPoint))
+    }
+
+    fun updateLatestStroke(sample: StrokeSample) {
+        activeTool?.onMove(sample)
     }
 
     fun finishStroke() {

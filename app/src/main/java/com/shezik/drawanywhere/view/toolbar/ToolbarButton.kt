@@ -20,6 +20,8 @@ import androidx.compose.ui.unit.dp
 import com.shezik.drawanywhere.R
 import com.shezik.drawanywhere.UiState
 import com.shezik.drawanywhere.model.PenType
+import com.shezik.drawanywhere.model.StylusButtonAction
+import com.shezik.drawanywhere.model.StylusButtonScheme
 import com.shezik.drawanywhere.view.canvas.LockMode
 
 @Composable
@@ -74,8 +76,19 @@ internal fun createAllToolbarButtons(
     onChangeOrientation: (ToolbarOrientation) -> Unit,
     onChangeAutoClearCanvas: (Boolean) -> Unit,
     onChangeVisibleOnStart: (Boolean) -> Unit,
+    onChangeToolbarMinimized: (Boolean) -> Unit,
     fingerDrawingEnabled: Boolean,
     onChangeFingerDrawingEnabled: (Boolean) -> Unit,
+    stylusButtonScheme: StylusButtonScheme,
+    onChangeStylusButtonScheme: (StylusButtonScheme) -> Unit,
+    stylusPrimaryButtonAction: StylusButtonAction,
+    onChangeStylusPrimaryButtonAction: (StylusButtonAction) -> Unit,
+    stylusSecondaryButtonAction: StylusButtonAction,
+    onChangeStylusSecondaryButtonAction: (StylusButtonAction) -> Unit,
+    pressureEraserEnabled: Boolean,
+    onChangePressureEraserEnabled: (Boolean) -> Unit,
+    pressureEraserThreshold: Float,
+    onChangePressureEraserThreshold: (Float) -> Unit,
     onCycleLockMode: () -> Unit,
     lockMode: LockMode,
     onQuitApplication: () -> Unit
@@ -151,6 +164,12 @@ internal fun createAllToolbarButtons(
         onClick = onRedo
     ),
     ToolbarButton(
+        id = "minimize",
+        icon = Icons.Default.CloseFullscreen,
+        contentDescription = stringResource(R.string.minimize_toolbar),
+        onClick = { onChangeToolbarMinimized(true) }
+    ),
+    ToolbarButton(
         id = "settings",
         icon = Icons.Default.Tune,
         contentDescription = stringResource(R.string.settings),
@@ -164,6 +183,16 @@ internal fun createAllToolbarButtons(
                 onChangeVisibleOnStart = onChangeVisibleOnStart,
                 fingerDrawingEnabled = fingerDrawingEnabled,
                 onChangeFingerDrawingEnabled = onChangeFingerDrawingEnabled,
+                stylusButtonScheme = stylusButtonScheme,
+                onChangeStylusButtonScheme = onChangeStylusButtonScheme,
+                stylusPrimaryButtonAction = stylusPrimaryButtonAction,
+                onChangeStylusPrimaryButtonAction = onChangeStylusPrimaryButtonAction,
+                stylusSecondaryButtonAction = stylusSecondaryButtonAction,
+                onChangeStylusSecondaryButtonAction = onChangeStylusSecondaryButtonAction,
+                pressureEraserEnabled = pressureEraserEnabled,
+                onChangePressureEraserEnabled = onChangePressureEraserEnabled,
+                pressureEraserThreshold = pressureEraserThreshold,
+                onChangePressureEraserThreshold = onChangePressureEraserThreshold,
                 onQuitApplication = onQuitApplication
             ) },
             { AboutScreen() }

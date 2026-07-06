@@ -21,6 +21,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import com.shezik.drawanywhere.model.PenConfig
 import com.shezik.drawanywhere.model.PenType
+import com.shezik.drawanywhere.model.StylusButtonAction
+import com.shezik.drawanywhere.model.StylusButtonScheme
 import com.shezik.drawanywhere.view.toolbar.ToolbarOrientation
 import androidx.compose.ui.graphics.toArgb
 import androidx.datastore.core.DataStore
@@ -43,7 +45,14 @@ class PreferencesManager(private val context: Context) {
         val TOOLBAR_ORIENTATION = stringPreferencesKey("toolbar_orientation")
         val AUTO_CLEAR_CANVAS = booleanPreferencesKey("auto_clear_canvas")
         val VISIBLE_ON_START = booleanPreferencesKey("visible_on_start")
+        val TOOLBAR_MINIMIZED = booleanPreferencesKey("toolbar_minimized")
         val FINGER_DRAWING_ENABLED = booleanPreferencesKey("finger_drawing_enabled")
+        val STYLUS_BUTTON_CAPTURE_ENABLED = booleanPreferencesKey("stylus_button_capture_enabled")
+        val STYLUS_BUTTON_SCHEME = stringPreferencesKey("stylus_button_scheme")
+        val STYLUS_PRIMARY_BUTTON_ACTION = stringPreferencesKey("stylus_primary_button_action")
+        val STYLUS_SECONDARY_BUTTON_ACTION = stringPreferencesKey("stylus_secondary_button_action")
+        val PRESSURE_ERASER_ENABLED = booleanPreferencesKey("pressure_eraser_enabled")
+        val PRESSURE_ERASER_THRESHOLD = floatPreferencesKey("pressure_eraser_threshold")
         val RECENT_COLORS = stringPreferencesKey("recent_colors")
 
         // Pen-specific keys (for saving multiple pens)
@@ -96,7 +105,28 @@ class PreferencesManager(private val context: Context) {
         }
 
         val visibleOnStart = preferences[PreferencesKeys.VISIBLE_ON_START] ?: defaultUiState.visibleOnStart
+        val toolbarMinimized = preferences[PreferencesKeys.TOOLBAR_MINIMIZED] ?: defaultUiState.toolbarMinimized
         val fingerDrawingEnabled = preferences[PreferencesKeys.FINGER_DRAWING_ENABLED] ?: defaultUiState.fingerDrawingEnabled
+        val legacyStylusButtonCaptureEnabled = preferences[PreferencesKeys.STYLUS_BUTTON_CAPTURE_ENABLED]
+        val stylusButtonScheme = preferences[PreferencesKeys.STYLUS_BUTTON_SCHEME]?.let {
+            getEnumValueOrDefault<StylusButtonScheme>(it, defaultUiState.stylusButtonScheme)
+        } ?: if (legacyStylusButtonCaptureEnabled == false) {
+            StylusButtonScheme.Disabled
+        } else {
+            defaultUiState.stylusButtonScheme
+        }
+        val stylusPrimaryButtonAction = getEnumValueOrDefault<StylusButtonAction>(
+            preferences[PreferencesKeys.STYLUS_PRIMARY_BUTTON_ACTION],
+            defaultUiState.stylusPrimaryButtonAction
+        )
+        val stylusSecondaryButtonAction = getEnumValueOrDefault<StylusButtonAction>(
+            preferences[PreferencesKeys.STYLUS_SECONDARY_BUTTON_ACTION],
+            defaultUiState.stylusSecondaryButtonAction
+        )
+        val pressureEraserEnabled = preferences[PreferencesKeys.PRESSURE_ERASER_ENABLED]
+            ?: defaultUiState.pressureEraserEnabled
+        val pressureEraserThreshold = preferences[PreferencesKeys.PRESSURE_ERASER_THRESHOLD]
+            ?: defaultUiState.pressureEraserThreshold
         val recentColorsStr = preferences[PreferencesKeys.RECENT_COLORS] ?: ""
         val recentColors = if (recentColorsStr.isNotEmpty())
             recentColorsStr.split(",").mapNotNull { s ->
@@ -113,7 +143,13 @@ class PreferencesManager(private val context: Context) {
             autoClearCanvas = preferences[PreferencesKeys.AUTO_CLEAR_CANVAS] ?: defaultUiState.autoClearCanvas,
 
             visibleOnStart = visibleOnStart,
+            toolbarMinimized = toolbarMinimized,
             fingerDrawingEnabled = fingerDrawingEnabled,
+            stylusButtonScheme = stylusButtonScheme,
+            stylusPrimaryButtonAction = stylusPrimaryButtonAction,
+            stylusSecondaryButtonAction = stylusSecondaryButtonAction,
+            pressureEraserEnabled = pressureEraserEnabled,
+            pressureEraserThreshold = pressureEraserThreshold,
             recentColors = recentColors,
             canvasVisible = visibleOnStart,
             firstDrawerOpen = visibleOnStart
@@ -126,7 +162,13 @@ class PreferencesManager(private val context: Context) {
             preferences[PreferencesKeys.TOOLBAR_ORIENTATION] = uiState.toolbarOrientation.name
             preferences[PreferencesKeys.AUTO_CLEAR_CANVAS] = uiState.autoClearCanvas
             preferences[PreferencesKeys.VISIBLE_ON_START] = uiState.visibleOnStart
+            preferences[PreferencesKeys.TOOLBAR_MINIMIZED] = uiState.toolbarMinimized
             preferences[PreferencesKeys.FINGER_DRAWING_ENABLED] = uiState.fingerDrawingEnabled
+            preferences[PreferencesKeys.STYLUS_BUTTON_SCHEME] = uiState.stylusButtonScheme.name
+            preferences[PreferencesKeys.STYLUS_PRIMARY_BUTTON_ACTION] = uiState.stylusPrimaryButtonAction.name
+            preferences[PreferencesKeys.STYLUS_SECONDARY_BUTTON_ACTION] = uiState.stylusSecondaryButtonAction.name
+            preferences[PreferencesKeys.PRESSURE_ERASER_ENABLED] = uiState.pressureEraserEnabled
+            preferences[PreferencesKeys.PRESSURE_ERASER_THRESHOLD] = uiState.pressureEraserThreshold
             preferences[PreferencesKeys.RECENT_COLORS] = uiState.recentColors.joinToString(",") { it.toArgb().toString(16).padStart(8, '0') }
 
             // Save each pen's configuration

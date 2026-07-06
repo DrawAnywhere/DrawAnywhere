@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import com.shezik.drawanywhere.model.DrawAction
 import com.shezik.drawanywhere.model.Stroke
 import com.shezik.drawanywhere.model.PenType
+import com.shezik.drawanywhere.model.StrokeSample
 
 /**
  * Point-level eraser — removes individual points within radius, splitting
@@ -14,13 +15,13 @@ class PixelEraserTool(private val ctx: ToolContext) : StrokeTool {
 
     private var snapshot: List<Stroke>? = null
 
-    override fun onStart(point: Offset) {
+    override fun onStart(sample: StrokeSample) {
         snapshot = null
-        eraseAt(point)
+        eraseAt(sample)
     }
 
-    override fun onMove(point: Offset) {
-        eraseAt(point)
+    override fun onMove(sample: StrokeSample) {
+        eraseAt(sample)
     }
 
     override fun onFinish() {
@@ -29,8 +30,9 @@ class PixelEraserTool(private val ctx: ToolContext) : StrokeTool {
         ctx.pushUndo(DrawAction.CanvasSnapshot(saved, ctx.strokes.toList()))
     }
 
-    private fun eraseAt(point: Offset) {
-        val r = ctx.penConfig.width / 2
+    private fun eraseAt(sample: StrokeSample) {
+        val point = sample.position
+        val r = pressureWidth(ctx.penConfig.width, sample.pressure) / 2
         val r2 = r * r
         val strokes = ctx.strokes
 
@@ -109,5 +111,10 @@ class PixelEraserTool(private val ctx: ToolContext) : StrokeTool {
         }
         return !(pt.x + radius < minX || pt.x - radius > maxX ||
                  pt.y + radius < minY || pt.y - radius > maxY)
+    }
+
+    private fun pressureWidth(baseWidth: Float, pressure: Float): Float {
+        val normalized = pressure.coerceIn(0f, 1f)
+        return baseWidth * (0.35f + normalized * 0.65f)
     }
 }
