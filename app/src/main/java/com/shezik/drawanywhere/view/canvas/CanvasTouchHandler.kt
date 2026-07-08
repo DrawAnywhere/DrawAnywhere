@@ -27,7 +27,6 @@ import kotlin.math.sqrt
 private const val FINGER_HOVER_DELAY_MS = 300L
 private const val STYLUS_HOVER_DELAY_MS = 0L
 private const val HOVER_FADE_MS = 200L
-private const val PRESSURE_ERASER_RELEASE_GAP = 0.08f
 
 /**
  * @param point Current or last-known pointer position.
@@ -389,9 +388,9 @@ class CanvasTouchHandler(
     private fun appendStrokeSample(sample: StrokeSample, isStylus: Boolean) {
         if (isStylus && viewModel.uiState.value.pressureEraserEnabled) {
             val shouldErase = shouldPressureErase(sample, startingStroke = false)
-            if (shouldErase != pressureEraserActive) {
+            if (shouldErase && !pressureEraserActive) {
                 viewModel.finishStroke()
-                pressureEraserActive = shouldErase
+                pressureEraserActive = true
                 viewModel.startStroke(sample, effectiveModifier())
                 return
             }
@@ -408,13 +407,7 @@ class CanvasTouchHandler(
         if (startingStroke && state.currentPenType.isEraser) return false
         if (!startingStroke && !pressureEraserActive && state.currentPenType.isEraser) return false
 
-        val enterThreshold = state.pressureEraserThreshold
-        val releaseThreshold = (enterThreshold - PRESSURE_ERASER_RELEASE_GAP).coerceAtLeast(0f)
-        return if (pressureEraserActive) {
-            sample.pressure > releaseThreshold
-        } else {
-            sample.pressure >= enterThreshold
-        }
+        return pressureEraserActive || sample.pressure >= state.pressureEraserThreshold
     }
 
     private fun strokeSample(

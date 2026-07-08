@@ -17,6 +17,7 @@ with this program. If not, see <https://www.gnu.org/licenses/>.
 package com.shezik.drawanywhere.view.canvas
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.view.KeyEvent
@@ -158,14 +159,7 @@ class NativeDrawCanvasView(
 
         drawController.removeExpiredStrokes(System.currentTimeMillis())
 
-        canvas.save()
-        canvas.translate(-vp.panX * vp.zoom, -vp.panY * vp.zoom)
-        canvas.scale(vp.zoom, vp.zoom)
-
-        for (stroke in drawController.strokeList) {
-            stroke.render(canvas, pathPaint)
-        }
-        canvas.restore()
+        renderStrokes(canvas, vp)
 
         // ── Hover size preview (screen space, constant border) ────
         touchHandler.hoverState?.let { state ->
@@ -231,6 +225,25 @@ class NativeDrawCanvasView(
         if (drawController.strokeList.any { it.penType.isEphemeral }) {
             postInvalidateDelayed(FRAME_INTERVAL_MS)
         }
+    }
+
+    fun renderToBitmap(backgroundColor: Int? = null): Bitmap {
+        val bitmap = Bitmap.createBitmap(width.coerceAtLeast(1), height.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
+        val exportCanvas = Canvas(bitmap)
+        backgroundColor?.let(exportCanvas::drawColor)
+        renderStrokes(exportCanvas, viewModel.viewport.value)
+        return bitmap
+    }
+
+    private fun renderStrokes(canvas: Canvas, vp: CanvasViewport) {
+        canvas.save()
+        canvas.translate(-vp.panX * vp.zoom, -vp.panY * vp.zoom)
+        canvas.scale(vp.zoom, vp.zoom)
+
+        for (stroke in drawController.strokeList) {
+            stroke.render(canvas, pathPaint)
+        }
+        canvas.restore()
     }
 
     // ── Viewport observation (for HUD updates) ────────────────────

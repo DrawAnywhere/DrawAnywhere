@@ -1,7 +1,7 @@
 package com.shezik.drawanywhere.view.toolbar
 
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -9,7 +9,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.hapticfeedback.HapticFeedback
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -36,31 +35,11 @@ fun DraggableToolbarCard(
                         onToolbarInteracted()
                     }
                 }
-            }
-            .pointerInput(Unit) {
-                detectDragGesturesAfterLongPress(
-                    onDragStart = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onDragStart?.invoke()
-                    },
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        onPositionChange(dragAmount)
-                        onDragPosition?.invoke(change.position)
-                    },
-                    onDragEnd = {
-                        val shouldSave = onDragEnd?.invoke() ?: true
-                        if (shouldSave) onPositionSaved()
-                    },
-                    onDragCancel = {
-                        onDragEnd?.invoke()
-                    }
-                )
             },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = CircleShape,
+        shape = RoundedCornerShape(36.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.9f)
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f)
         )
     ) {
         content()

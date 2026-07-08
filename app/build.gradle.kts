@@ -1,8 +1,16 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+}
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) {
+        file.inputStream().use(::load)
+    }
 }
 
 android {
@@ -14,13 +22,30 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 5
-        versionName = "2.3"
+        versionName = "2.3-hpos-stylus"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            val storeFilePath = localProperties.getProperty("store.file")
+            val storePasswordValue = localProperties.getProperty("store.password")
+            val keyAliasValue = localProperties.getProperty("key.alias")
+            val keyPasswordValue = localProperties.getProperty("key.password")
+
+            if (!storeFilePath.isNullOrBlank()) {
+                storeFile = file(storeFilePath)
+            }
+            storePassword = storePasswordValue
+            keyAlias = keyAliasValue
+            keyPassword = keyPasswordValue
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -92,6 +117,10 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel)
     implementation(libs.androidx.savedstate)
     implementation(libs.kotlinx.coroutines.core)
+    implementation("top.yukonga.miuix.kmp:miuix-ui-android:0.9.2")
+    implementation("top.yukonga.miuix.kmp:miuix-icons-android:0.9.2")
+    implementation("top.yukonga.miuix.kmp:miuix-preference-android:0.9.2")
+    implementation("androidx.navigationevent:navigationevent-compose:1.1.1")
 }
 
 // Disable baseline.prof for reproducibility

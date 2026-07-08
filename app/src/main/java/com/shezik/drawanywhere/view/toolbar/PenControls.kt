@@ -11,13 +11,12 @@ import androidx.compose.ui.unit.dp
 import com.shezik.drawanywhere.R
 import com.shezik.drawanywhere.model.PenConfig
 import com.shezik.drawanywhere.ui.theme.Spacing
+import top.yukonga.miuix.kmp.basic.Slider
 
 @Composable
 fun PenControls(
     penConfig: PenConfig,
     onStrokeWidthChange: (Float) -> Unit,
-    onAlphaChange: (Float) -> Unit,
-    alphaEnabled: Boolean = true,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.lg)) {
         Text(
@@ -33,14 +32,6 @@ fun PenControls(
             onValueChange = onStrokeWidthChange,
             valueDisplay = { "${it.toInt()}px" },
             enabled = true,
-        )
-        SliderControl(
-            label = stringResource(R.string.opacity),
-            value = penConfig.alpha,
-            valueRange = 0.1f..1f,
-            onValueChange = onAlphaChange,
-            valueDisplay = { "${(it * 100).toInt()}%" },
-            enabled = alphaEnabled,
         )
     }
 }
@@ -80,14 +71,6 @@ fun SliderControl(
             onValueChange = onValueChange,
             valueRange = valueRange,
             enabled = enabled,
-            colors = SliderDefaults.colors(
-                thumbColor = MaterialTheme.colorScheme.primary,
-                activeTrackColor = MaterialTheme.colorScheme.primary,
-                inactiveTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                disabledThumbColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                disabledActiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
-                disabledInactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
-            )
         )
     }
 }

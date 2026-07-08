@@ -31,6 +31,7 @@ import com.shezik.drawanywhere.model.StrokeSample
 import com.shezik.drawanywhere.view.canvas.CanvasViewport
 import com.shezik.drawanywhere.view.canvas.LockMode
 import com.shezik.drawanywhere.view.toolbar.ToolbarOrientation
+import com.shezik.drawanywhere.view.toolbar.ToolbarOrientationMode
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -43,9 +44,12 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+const val DEFAULT_EXPORT_RELATIVE_PATH = "Pictures/DrawAnywhere"
+
 data class ServiceState(
     val toolbarPosition: Offset = Offset(32f, 64f),
-    val toolbarActive: Boolean = true
+    val toolbarActive: Boolean = true,
+    val toolbarPositionInitialized: Boolean = false,
 )
 
 data class UiState(
@@ -61,11 +65,19 @@ data class UiState(
     val pressureEraserEnabled: Boolean = false,
     val pressureEraserThreshold: Float = 0.85f,
     val recentColors: List<Color> = emptyList(),
+    val savedCustomColors: List<Color> = emptyList(),
+    val savedPenWidths: List<Float> = emptyList(),
+    val savedShapeWidths: List<Float> = emptyList(),
+    val savedLaserWidths: List<Float> = emptyList(),
+    val savedEraserSizes: List<Float> = emptyList(),
+    val exportTreeUri: String? = null,
+    val stylusCycleColors: List<Color> = PRESET_COLORS,
 
     val currentPenType: PenType = PenType.Pen,
     val penConfigs: Map<PenType, PenConfig> = defaultPenConfigs(),
 
     val toolbarOrientation: ToolbarOrientation = ToolbarOrientation.HORIZONTAL,
+    val toolbarOrientationMode: ToolbarOrientationMode = ToolbarOrientationMode.HORIZONTAL,
     val firstDrawerOpen: Boolean = canvasVisible,
     val secondDrawerOpen: Boolean = false,
 
@@ -139,8 +151,13 @@ class DrawViewModel(
     }
 
     fun switchToPen(type: PenType) {
+        if (type.isEraser) lastEraserPenType = type
         _uiState.update { it.copy(currentPenType = type) }
         controller.setPenConfig(uiState.value.currentPenConfig)
+    }
+
+    fun switchToLastEraser() {
+        switchToPen(lastEraserPenType.takeIf { it.isEraser } ?: PenType.StrokeEraser)
     }
 
     fun resolvePenType(modifier: StrokeModifier) =
@@ -155,6 +172,7 @@ class DrawViewModel(
     private var isStrokeDown: Boolean = false
     private var stylusEraserReturnPenType: PenType = PenType.Pen
     private var stylusLaserReturnPenType: PenType = PenType.Pen
+    private var lastEraserPenType: PenType = PenType.StrokeEraser
 
     fun startStroke(point: Offset, modifier: StrokeModifier) {
         startStroke(StrokeSample(point), modifier)
@@ -238,8 +256,9 @@ class DrawViewModel(
         }
 
         val currentColor = uiState.value.currentPenConfig.color.toArgb()
-        val currentIndex = PRESET_COLORS.indexOfFirst { it.toArgb() == currentColor }
-        val nextColor = PRESET_COLORS[(currentIndex + 1).floorMod(PRESET_COLORS.size)]
+        val cycleColors = uiState.value.stylusCycleColors.ifEmpty { PRESET_COLORS }
+        val currentIndex = cycleColors.indexOfFirst { it.toArgb() == currentColor }
+        val nextColor = cycleColors[(currentIndex + 1).floorMod(cycleColors.size)]
         setPresetColor(nextColor)
     }
 
@@ -292,6 +311,28 @@ class DrawViewModel(
         _uiState.update { it.copy(recentColors = updated.take(6)) }
     }
 
+    fun saveCurrentCustomColor(color: Color = uiState.value.currentPenConfig.color) {
+        val current = uiState.value.savedCustomColors.filterNot { it.toArgb() == color.toArgb() }
+        _uiState.update { it.copy(savedCustomColors = (listOf(color) + current).take(6)) }
+    }
+
+    fun saveCurrentWidthPreset() {
+        val width = uiState.value.currentPenConfig.width
+        _uiState.update { state ->
+            when (state.currentPenType) {
+                PenType.Pen -> state.copy(savedPenWidths = saveWidthToList(state.savedPenWidths, width))
+                PenType.Rectangle, PenType.Ellipse -> state.copy(savedShapeWidths = saveWidthToList(state.savedShapeWidths, width))
+                PenType.Laser -> state.copy(savedLaserWidths = saveWidthToList(state.savedLaserWidths, width))
+                PenType.StrokeEraser, PenType.PixelEraser -> state.copy(savedEraserSizes = saveWidthToList(state.savedEraserSizes, width))
+            }
+        }
+    }
+
+    private fun saveWidthToList(current: List<Float>, width: Float): List<Float> {
+        val deduped = current.filterNot { kotlin.math.abs(it - width) < 0.5f }
+        return (listOf(width) + deduped).take(4)
+    }
+
     fun setStrokeWidth(width: Float) = updateCurrentPenConfig { copy(width = width) }
 
     fun setStrokeAlpha(alpha: Float) = updateCurrentPenConfig { copy(alpha = alpha) }
@@ -309,11 +350,18 @@ class DrawViewModel(
     fun setToolbarPosition(position: Offset) =
         _serviceState.update { it.copy(toolbarPosition = position) }
 
+    fun markToolbarPositionInitialized() =
+        _serviceState.update { it.copy(toolbarPositionInitialized = true) }
+
     fun updateToolbarPosition(offset: Offset) =
         setToolbarPosition(serviceState.value.toolbarPosition + offset)
 
     fun saveToolbarPosition() = viewModelScope.launch {
-        preferencesManager.saveServiceState(serviceState.value)
+        val state = serviceState.value.let {
+            if (it.toolbarPositionInitialized) it else it.copy(toolbarPositionInitialized = true)
+        }
+        _serviceState.value = state
+        preferencesManager.saveServiceState(state)
     }
 
     fun clearCanvas() = controller.clearStrokes()
@@ -335,15 +383,27 @@ class DrawViewModel(
         _serviceState.update { it.copy(toolbarActive = state) }
 
     fun toggleToolbarOrientation() =
-        setToolbarOrientation(
+        setToolbarOrientationMode(
             when (uiState.value.toolbarOrientation) {
                 ToolbarOrientation.VERTICAL -> ToolbarOrientation.HORIZONTAL
                 ToolbarOrientation.HORIZONTAL -> ToolbarOrientation.VERTICAL
-            }
+            }.toMode()
         )
 
     fun setToolbarOrientation(orientation: ToolbarOrientation) =
         _uiState.update { it.copy(toolbarOrientation = orientation) }
+
+    fun setToolbarOrientationMode(mode: ToolbarOrientationMode) {
+        _uiState.update { state ->
+            state.copy(
+                toolbarOrientationMode = mode,
+                toolbarOrientation = when (mode) {
+                    ToolbarOrientationMode.HORIZONTAL -> ToolbarOrientation.HORIZONTAL
+                    ToolbarOrientationMode.VERTICAL -> ToolbarOrientation.VERTICAL
+                }
+            )
+        }
+    }
 
     fun toggleFirstDrawer() =
         setFirstDrawerOpen(!uiState.value.firstDrawerOpen)
@@ -397,6 +457,30 @@ class DrawViewModel(
 
     fun setPressureEraserThreshold(threshold: Float) =
         _uiState.update { it.copy(pressureEraserThreshold = threshold.coerceIn(0f, 1f)) }
+
+    fun setExportTreeUri(uri: String?) =
+        _uiState.update { it.copy(exportTreeUri = uri?.takeIf(String::isNotBlank)) }
+
+    fun resetExportLocation() =
+        setExportTreeUri(null)
+
+    fun addStylusCycleColor(color: Color) {
+        val normalized = color.copy(alpha = 1f)
+        _uiState.update { state ->
+            val updated = state.stylusCycleColors.filterNot { it.toArgb() == normalized.toArgb() } + normalized
+            state.copy(stylusCycleColors = updated.takeLast(24))
+        }
+    }
+
+    fun removeStylusCycleColor(color: Color) {
+        _uiState.update { state ->
+            val updated = state.stylusCycleColors.filterNot { it.toArgb() == color.toArgb() }
+            state.copy(stylusCycleColors = updated.ifEmpty { PRESET_COLORS })
+        }
+    }
+
+    fun resetStylusCycleColors() =
+        _uiState.update { it.copy(stylusCycleColors = PRESET_COLORS) }
 
     private fun Int.floorMod(other: Int): Int = ((this % other) + other) % other
 
@@ -454,6 +538,12 @@ class DrawViewModel(
         }
     }
 }
+
+private fun ToolbarOrientation.toMode(): ToolbarOrientationMode =
+    when (this) {
+        ToolbarOrientation.HORIZONTAL -> ToolbarOrientationMode.HORIZONTAL
+        ToolbarOrientation.VERTICAL -> ToolbarOrientationMode.VERTICAL
+    }
 
 sealed class DismissTarget {
     object Hidden : DismissTarget()

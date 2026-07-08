@@ -24,6 +24,7 @@ import com.shezik.drawanywhere.model.PenType
 import com.shezik.drawanywhere.model.StylusButtonAction
 import com.shezik.drawanywhere.model.StylusButtonScheme
 import com.shezik.drawanywhere.view.toolbar.ToolbarOrientation
+import com.shezik.drawanywhere.view.toolbar.ToolbarOrientationMode
 import androidx.compose.ui.graphics.toArgb
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -42,7 +43,9 @@ class PreferencesManager(private val context: Context) {
         val CURRENT_PEN_TYPE = stringPreferencesKey("current_pen_type")
         val TOOLBAR_POSITION_X = floatPreferencesKey("toolbar_position_x")
         val TOOLBAR_POSITION_Y = floatPreferencesKey("toolbar_position_y")
+        val TOOLBAR_POSITION_INITIALIZED = booleanPreferencesKey("toolbar_position_initialized")
         val TOOLBAR_ORIENTATION = stringPreferencesKey("toolbar_orientation")
+        val TOOLBAR_ORIENTATION_MODE = stringPreferencesKey("toolbar_orientation_mode")
         val AUTO_CLEAR_CANVAS = booleanPreferencesKey("auto_clear_canvas")
         val VISIBLE_ON_START = booleanPreferencesKey("visible_on_start")
         val TOOLBAR_MINIMIZED = booleanPreferencesKey("toolbar_minimized")
@@ -54,6 +57,13 @@ class PreferencesManager(private val context: Context) {
         val PRESSURE_ERASER_ENABLED = booleanPreferencesKey("pressure_eraser_enabled")
         val PRESSURE_ERASER_THRESHOLD = floatPreferencesKey("pressure_eraser_threshold")
         val RECENT_COLORS = stringPreferencesKey("recent_colors")
+        val SAVED_CUSTOM_COLORS = stringPreferencesKey("saved_custom_colors")
+        val SAVED_PEN_WIDTHS = stringPreferencesKey("saved_pen_widths")
+        val SAVED_SHAPE_WIDTHS = stringPreferencesKey("saved_shape_widths")
+        val SAVED_LASER_WIDTHS = stringPreferencesKey("saved_laser_widths")
+        val SAVED_ERASER_SIZES = stringPreferencesKey("saved_eraser_sizes")
+        val EXPORT_TREE_URI = stringPreferencesKey("export_tree_uri")
+        val STYLUS_CYCLE_COLORS = stringPreferencesKey("stylus_cycle_colors")
 
         // Pen-specific keys (for saving multiple pens)
         fun penColorKey(penType: PenType) = intPreferencesKey("${penType.name}_color")
@@ -133,6 +143,14 @@ class PreferencesManager(private val context: Context) {
                 try { Color(s.toLong(16).toInt()) } catch (_: Exception) { null }
             }
         else emptyList()
+        val savedCustomColors = decodeColorList(preferences[PreferencesKeys.SAVED_CUSTOM_COLORS])
+        val savedPenWidths = decodeFloatList(preferences[PreferencesKeys.SAVED_PEN_WIDTHS])
+        val savedShapeWidths = decodeFloatList(preferences[PreferencesKeys.SAVED_SHAPE_WIDTHS])
+        val savedLaserWidths = decodeFloatList(preferences[PreferencesKeys.SAVED_LASER_WIDTHS])
+        val savedEraserSizes = decodeFloatList(preferences[PreferencesKeys.SAVED_ERASER_SIZES])
+        val exportTreeUri = preferences[PreferencesKeys.EXPORT_TREE_URI]
+        val stylusCycleColors = decodeColorList(preferences[PreferencesKeys.STYLUS_CYCLE_COLORS])
+            .ifEmpty { defaultUiState.stylusCycleColors }
 
         return UiState(
             currentPenType = currentPenType,
@@ -140,6 +158,10 @@ class PreferencesManager(private val context: Context) {
             toolbarOrientation = getEnumValueOrDefault<ToolbarOrientation>(
                 preferences[PreferencesKeys.TOOLBAR_ORIENTATION],
                 defaultUiState.toolbarOrientation),
+            toolbarOrientationMode = getEnumValueOrDefault<ToolbarOrientationMode>(
+                preferences[PreferencesKeys.TOOLBAR_ORIENTATION_MODE],
+                defaultUiState.toolbarOrientationMode
+            ),
             autoClearCanvas = preferences[PreferencesKeys.AUTO_CLEAR_CANVAS] ?: defaultUiState.autoClearCanvas,
 
             visibleOnStart = visibleOnStart,
@@ -151,6 +173,13 @@ class PreferencesManager(private val context: Context) {
             pressureEraserEnabled = pressureEraserEnabled,
             pressureEraserThreshold = pressureEraserThreshold,
             recentColors = recentColors,
+            savedCustomColors = savedCustomColors,
+            savedPenWidths = savedPenWidths,
+            savedShapeWidths = savedShapeWidths,
+            savedLaserWidths = savedLaserWidths,
+            savedEraserSizes = savedEraserSizes,
+            exportTreeUri = exportTreeUri,
+            stylusCycleColors = stylusCycleColors,
             canvasVisible = visibleOnStart,
             firstDrawerOpen = visibleOnStart
         )
@@ -160,6 +189,7 @@ class PreferencesManager(private val context: Context) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.CURRENT_PEN_TYPE] = uiState.currentPenType.name
             preferences[PreferencesKeys.TOOLBAR_ORIENTATION] = uiState.toolbarOrientation.name
+            preferences[PreferencesKeys.TOOLBAR_ORIENTATION_MODE] = uiState.toolbarOrientationMode.name
             preferences[PreferencesKeys.AUTO_CLEAR_CANVAS] = uiState.autoClearCanvas
             preferences[PreferencesKeys.VISIBLE_ON_START] = uiState.visibleOnStart
             preferences[PreferencesKeys.TOOLBAR_MINIMIZED] = uiState.toolbarMinimized
@@ -170,6 +200,15 @@ class PreferencesManager(private val context: Context) {
             preferences[PreferencesKeys.PRESSURE_ERASER_ENABLED] = uiState.pressureEraserEnabled
             preferences[PreferencesKeys.PRESSURE_ERASER_THRESHOLD] = uiState.pressureEraserThreshold
             preferences[PreferencesKeys.RECENT_COLORS] = uiState.recentColors.joinToString(",") { it.toArgb().toString(16).padStart(8, '0') }
+            preferences[PreferencesKeys.SAVED_CUSTOM_COLORS] = encodeColorList(uiState.savedCustomColors)
+            preferences[PreferencesKeys.SAVED_PEN_WIDTHS] = encodeFloatList(uiState.savedPenWidths)
+            preferences[PreferencesKeys.SAVED_SHAPE_WIDTHS] = encodeFloatList(uiState.savedShapeWidths)
+            preferences[PreferencesKeys.SAVED_LASER_WIDTHS] = encodeFloatList(uiState.savedLaserWidths)
+            preferences[PreferencesKeys.SAVED_ERASER_SIZES] = encodeFloatList(uiState.savedEraserSizes)
+            uiState.exportTreeUri?.let {
+                preferences[PreferencesKeys.EXPORT_TREE_URI] = it
+            } ?: preferences.remove(PreferencesKeys.EXPORT_TREE_URI)
+            preferences[PreferencesKeys.STYLUS_CYCLE_COLORS] = encodeColorList(uiState.stylusCycleColors)
 
             // Save each pen's configuration
             for ((penType, config) in uiState.penConfigs) {
@@ -190,7 +229,9 @@ class PreferencesManager(private val context: Context) {
             toolbarPosition = Offset(
                 x = preferences[PreferencesKeys.TOOLBAR_POSITION_X] ?: defaultServiceState.toolbarPosition.x,
                 y = preferences[PreferencesKeys.TOOLBAR_POSITION_Y] ?: defaultServiceState.toolbarPosition.y
-            )
+            ),
+            toolbarPositionInitialized = preferences[PreferencesKeys.TOOLBAR_POSITION_INITIALIZED]
+                ?: defaultServiceState.toolbarPositionInitialized
         )
     }
 
@@ -198,6 +239,28 @@ class PreferencesManager(private val context: Context) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.TOOLBAR_POSITION_X] = serviceState.toolbarPosition.x
             preferences[PreferencesKeys.TOOLBAR_POSITION_Y] = serviceState.toolbarPosition.y
+            preferences[PreferencesKeys.TOOLBAR_POSITION_INITIALIZED] =
+                serviceState.toolbarPositionInitialized
         }
     }
+
+    private fun decodeColorList(raw: String?): List<Color> =
+        raw?.takeIf { it.isNotEmpty() }
+            ?.split(",")
+            ?.mapNotNull { value ->
+                try { Color(value.toLong(16).toInt()) } catch (_: Exception) { null }
+            }
+            ?: emptyList()
+
+    private fun decodeFloatList(raw: String?): List<Float> =
+        raw?.takeIf { it.isNotEmpty() }
+            ?.split(",")
+            ?.mapNotNull { it.toFloatOrNull() }
+            ?: emptyList()
+
+    private fun encodeColorList(colors: List<Color>): String =
+        colors.joinToString(",") { it.toArgb().toString(16).padStart(8, '0') }
+
+    private fun encodeFloatList(values: List<Float>): String =
+        values.joinToString(",") { it.toString() }
 }

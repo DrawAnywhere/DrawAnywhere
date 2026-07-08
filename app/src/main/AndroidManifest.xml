@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
 
     <application
         android:allowBackup="true"
@@ -41,9 +42,28 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DrawAnywhere" />
+
+        <activity
+            android:name=".ScreenCapturePermissionActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DrawAnywhere.TransparentActivity"
+            android:excludeFromRecents="true"
+            android:noHistory="true" />
+
+        <activity
+            android:name=".SaveLocationPickerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DrawAnywhere.TransparentActivity"
+            android:excludeFromRecents="true"
+            android:noHistory="true" />
+
         <service android:name=".MainService"
             android:exported="false"
-            android:foregroundServiceType="specialUse">
+            android:foregroundServiceType="specialUse|mediaProjection">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="The foreground service is used to host the canvas on top of other apps, which is the business logic of this application." />

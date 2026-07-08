@@ -73,7 +73,7 @@ internal fun createAllToolbarButtons(
     onPresetColorChange: (Color) -> Unit = onColorChange,
     onStrokeWidthChange: (Float) -> Unit,
     onAlphaChange: (Float) -> Unit,
-    onChangeOrientation: (ToolbarOrientation) -> Unit,
+    onChangeOrientationMode: (ToolbarOrientationMode) -> Unit,
     onChangeAutoClearCanvas: (Boolean) -> Unit,
     onChangeVisibleOnStart: (Boolean) -> Unit,
     onChangeToolbarMinimized: (Boolean) -> Unit,
@@ -119,7 +119,7 @@ internal fun createAllToolbarButtons(
         contentDescription = stringResource(R.string.tool_controls),
         popupPages = listOf(
             { PenTypeSelector(currentPenType = uiState.currentPenType, onPenTypeSwitch = onPenTypeSwitch) },
-            { PenControls(penConfig = uiState.currentPenConfig, onStrokeWidthChange = onStrokeWidthChange, onAlphaChange = onAlphaChange, alphaEnabled = !uiState.currentPenType.isEraser) }
+            { PenControls(penConfig = uiState.currentPenConfig, onStrokeWidthChange = onStrokeWidthChange) }
         )
     ),
     ToolbarButton(
@@ -130,9 +130,15 @@ internal fun createAllToolbarButtons(
         isEnabled = !uiState.currentPenType.isEraser,
         popupPages = listOf(
             { ColorPicker(
-                selectedColor = uiState.currentPenConfig.color,
-                onColorSelected = onColorChange,
-                onPresetSelected = onPresetColorChange,
+                selectedColor = uiState.currentPenConfig.color.copy(alpha = uiState.currentPenConfig.alpha),
+                onColorSelected = { color ->
+                    onColorChange(color.copy(alpha = 1f))
+                    onAlphaChange(color.alpha)
+                },
+                onPresetSelected = { color ->
+                    onPresetColorChange(color.copy(alpha = 1f))
+                    onAlphaChange(color.alpha)
+                },
                 recentColors = uiState.recentColors
             ) }
         )
@@ -175,8 +181,8 @@ internal fun createAllToolbarButtons(
         contentDescription = stringResource(R.string.settings),
         popupPages = listOf(
             { ToolbarControls(
-                currentOrientation = uiState.toolbarOrientation,
-                onChangeOrientation = onChangeOrientation,
+                currentOrientationMode = uiState.toolbarOrientationMode,
+                onChangeOrientationMode = onChangeOrientationMode,
                 autoClearCanvas = uiState.autoClearCanvas,
                 onChangeAutoClearCanvas = onChangeAutoClearCanvas,
                 visibleOnStart = uiState.visibleOnStart,

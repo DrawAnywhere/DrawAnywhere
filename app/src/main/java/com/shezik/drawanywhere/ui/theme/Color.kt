@@ -18,10 +18,19 @@ package com.shezik.drawanywhere.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+val Blue80 = Color(0xFFB7CBFF)
+val Teal80 = Color(0xFF9DD5D4)
+val Rose80 = Color(0xFFFFB4AB)
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+val Blue40 = Color(0xFF4D6FB7)
+val Teal40 = Color(0xFF476E6D)
+val Rose40 = Color(0xFF8E4B44)
+
+val Slate950 = Color(0xFF101417)
+val Slate900 = Color(0xFF171C20)
+val Slate800 = Color(0xFF20262B)
+val Slate700 = Color(0xFF293038)
+val Slate500 = Color(0xFF89939E)
+val Cloud50 = Color(0xFFF7F9FC)
+val Cloud100 = Color(0xFFEEF2F6)
+val Cloud200 = Color(0xFFE2E8F0)

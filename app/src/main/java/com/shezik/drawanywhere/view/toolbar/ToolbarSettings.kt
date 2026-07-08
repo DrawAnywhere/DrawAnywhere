@@ -27,8 +27,8 @@ import com.shezik.drawanywhere.ui.theme.Spacing
 
 @Composable
 internal fun ToolbarControls(
-    currentOrientation: ToolbarOrientation,
-    onChangeOrientation: (ToolbarOrientation) -> Unit,
+    currentOrientationMode: ToolbarOrientationMode,
+    onChangeOrientationMode: (ToolbarOrientationMode) -> Unit,
     autoClearCanvas: Boolean,
     onChangeAutoClearCanvas: (Boolean) -> Unit,
     visibleOnStart: Boolean,
@@ -56,8 +56,8 @@ internal fun ToolbarControls(
 
     when (page) {
         SettingsPage.Main -> SettingsMainPage(
-            currentOrientation = currentOrientation,
-            onChangeOrientation = onChangeOrientation,
+            currentOrientationMode = currentOrientationMode,
+            onChangeOrientationMode = onChangeOrientationMode,
             autoClearCanvas = autoClearCanvas,
             onChangeAutoClearCanvas = onChangeAutoClearCanvas,
             visibleOnStart = visibleOnStart,
@@ -135,8 +135,8 @@ private enum class SettingsPage {
 
 @Composable
 private fun SettingsMainPage(
-    currentOrientation: ToolbarOrientation,
-    onChangeOrientation: (ToolbarOrientation) -> Unit,
+    currentOrientationMode: ToolbarOrientationMode,
+    onChangeOrientationMode: (ToolbarOrientationMode) -> Unit,
     autoClearCanvas: Boolean,
     onChangeAutoClearCanvas: (Boolean) -> Unit,
     visibleOnStart: Boolean,
@@ -150,17 +150,17 @@ private fun SettingsMainPage(
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         PageHeader(title = stringResource(R.string.settings))
         val orientations = listOf(
-            ToolbarOrientation.HORIZONTAL to stringResource(R.string.horizontal),
-            ToolbarOrientation.VERTICAL to stringResource(R.string.vertical)
+            ToolbarOrientationMode.HORIZONTAL to stringResource(R.string.horizontal),
+            ToolbarOrientationMode.VERTICAL to stringResource(R.string.vertical)
         )
-        orientations.forEach { (orientation, label) ->
-            val isSelected = currentOrientation == orientation
+        orientations.forEach { (orientationMode, label) ->
+            val isSelected = currentOrientationMode == orientationMode
             val bg = if (isSelected) MaterialTheme.colorScheme.primaryContainer
                      else MaterialTheme.colorScheme.surface
             val fg = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
                      else MaterialTheme.colorScheme.onSurface
             Button(
-                onClick = { onChangeOrientation(orientation) },
+                onClick = { onChangeOrientationMode(orientationMode) },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = bg, contentColor = fg),
                 shape = RoundedCornerShape(Spacing.sm)
