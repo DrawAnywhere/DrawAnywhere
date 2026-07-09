@@ -19,7 +19,7 @@ android {
 
     defaultConfig {
         applicationId = "com.shezik.drawanywhere"
-        minSdk = 26
+        minSdk = 33
         targetSdk = 36
         versionCode = 5
         versionName = "2.3-hpos-stylus"
@@ -118,6 +118,7 @@ dependencies {
     implementation(libs.androidx.savedstate)
     implementation(libs.kotlinx.coroutines.core)
     implementation("top.yukonga.miuix.kmp:miuix-ui-android:0.9.2")
+    implementation("top.yukonga.miuix.kmp:miuix-blur-android:0.9.2")
     implementation("top.yukonga.miuix.kmp:miuix-icons-android:0.9.2")
     implementation("top.yukonga.miuix.kmp:miuix-preference-android:0.9.2")
     implementation("androidx.navigationevent:navigationevent-compose:1.1.1")

@@ -21,10 +21,13 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.app.Activity
+import android.app.Dialog
 import android.content.ContentValues
 import android.content.Intent
 import android.graphics.Canvas
 import android.graphics.Bitmap
+import android.graphics.Color as AndroidColor
+import android.graphics.drawable.GradientDrawable
 import android.content.pm.ServiceInfo
 import android.net.Uri
 import android.hardware.display.DisplayManager
@@ -43,9 +46,11 @@ import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.view.Gravity
 import android.view.View
+import android.view.Window
 import android.view.WindowInsets
 import android.view.WindowManager
 import android.view.WindowManager.LayoutParams
+import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.ComposeView
@@ -104,7 +109,9 @@ class MainService : Service() {
     private lateinit var windowManager: WindowManager
     private lateinit var canvasView: NativeDrawCanvasView
     private lateinit var toolbarView: ComposeView
+    private lateinit var toolbarDialog: Dialog
     private var settingsView: ComposeView? = null
+    private var settingsDialog: Dialog? = null
     private lateinit var dismissTargetView: DismissTargetView
     private lateinit var preferencesManager: PreferencesManager
     private lateinit var viewModel: DrawViewModel
@@ -203,18 +210,18 @@ class MainService : Service() {
         // --------------------------------------------------------------------
 
         windowManager.addView(canvasView, canvasParams)
-        windowManager.addView(toolbarView, toolbarParams)
+        showToolbarWindow(toolbarParams)
         windowManager.addView(dismissTargetView, dismissParams)
 
         // Defer toolbar position validation until layout is complete
         toolbarView.post {
             initializeToolbarPositionIfNeeded(toolbarParams)
             applyToolbarPosition(toolbarParams, viewModel.serviceState.value)
-            windowManager.updateViewLayout(toolbarView, toolbarParams)
+            updateToolbarWindowLayout(toolbarParams)
         }
         toolbarView.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
             applyToolbarPosition(toolbarParams, viewModel.serviceState.value)
-            windowManager.updateViewLayout(toolbarView, toolbarParams)
+            updateToolbarWindowLayout(toolbarParams)
         }
 
         // Observe UI state changes
@@ -223,7 +230,8 @@ class MainService : Service() {
                 applyCanvasInputMode(canvasParams, state)
                 windowManager.updateViewLayout(canvasView, canvasParams)
                 canvasView.visibility = if (state.canvasVisible) View.VISIBLE else View.GONE
-                windowManager.updateViewLayout(toolbarView, toolbarParams)
+                updateToolbarWindowLayout(toolbarParams)
+                updateToolbarAlpha()
                 if (state.canvasVisible &&
                     state.stylusButtonScheme != StylusButtonScheme.Disabled &&
                     !state.canvasPassthrough
@@ -237,13 +245,8 @@ class MainService : Service() {
         serviceScope.launch {
             viewModel.serviceState.collect { state ->
                 applyToolbarPosition(toolbarParams, state)
-                windowManager.updateViewLayout(toolbarView, toolbarParams)
-
-                val targetAlpha = if (state.toolbarActive) 1.0f else DrawViewModel.TOOLBAR_DIM_ALPHA
-                toolbarView.animate()
-                    .alpha(targetAlpha)
-                    .setDuration(DrawViewModel.TOOLBAR_DIM_DURATION_MS)
-                    .start()
+                updateToolbarWindowLayout(toolbarParams)
+                updateToolbarAlpha()
             }
         }
 
@@ -291,6 +294,81 @@ class MainService : Service() {
         }
     }
 
+    private fun updateToolbarAlpha() {
+        val serviceState = viewModel.serviceState.value
+        val uiState = viewModel.uiState.value
+        val targetAlpha = if (!serviceState.toolbarActive && uiState.toolbarMinimized) {
+            DrawViewModel.TOOLBAR_DIM_ALPHA
+        } else {
+            1.0f
+        }
+        toolbarView.animate()
+            .alpha(targetAlpha)
+            .setDuration(DrawViewModel.TOOLBAR_DIM_DURATION_MS)
+            .start()
+    }
+
+    private fun showToolbarWindow(params: LayoutParams) {
+        toolbarDialog = Dialog(this, R.style.Theme_DrawAnywhere_ToolbarWindow).apply {
+            requestWindowFeature(Window.FEATURE_NO_TITLE)
+            setCanceledOnTouchOutside(false)
+            setContentView(toolbarView)
+            toolbarView.layoutParams = FrameLayout.LayoutParams(
+                LayoutParams.WRAP_CONTENT,
+                LayoutParams.WRAP_CONTENT
+            )
+        }
+        toolbarDialog.window?.applyToolbarWindowAttributes(params)
+        toolbarDialog.show()
+        toolbarDialog.window?.applyToolbarWindowAttributes(params)
+    }
+
+    private fun updateToolbarWindowLayout(params: LayoutParams) {
+        if (::toolbarDialog.isInitialized) {
+            toolbarDialog.window?.applyToolbarWindowAttributes(params)
+        }
+    }
+
+    private fun Window.applyToolbarWindowAttributes(params: LayoutParams) {
+        setBackgroundDrawable(toolbarWindowBackground())
+        clearFlags(LayoutParams.FLAG_DIM_BEHIND or LayoutParams.FLAG_BLUR_BEHIND)
+        setDimAmount(0f)
+        setType(LayoutParams.TYPE_APPLICATION_OVERLAY)
+        decorView.setPadding(0, 0, 0, 0)
+        attributes = params
+        setLayout(params.width, params.height)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            setBackgroundBlurRadius(dpToPx(24f))
+        }
+    }
+
+    private fun toolbarWindowBackground(): GradientDrawable =
+        GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = dpToPx(20f).toFloat()
+            setColor(AndroidColor.argb(48, 245, 247, 250))
+        }
+
+    private fun Window.applySettingsWindowAttributes(params: LayoutParams) {
+        setBackgroundDrawable(settingsWindowBackground())
+        clearFlags(LayoutParams.FLAG_DIM_BEHIND or LayoutParams.FLAG_BLUR_BEHIND)
+        setDimAmount(0f)
+        setType(LayoutParams.TYPE_APPLICATION_OVERLAY)
+        decorView.setPadding(0, 0, 0, 0)
+        attributes = params
+        setLayout(params.width, params.height)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            setBackgroundBlurRadius(dpToPx(36f))
+        }
+    }
+
+    private fun settingsWindowBackground(): GradientDrawable =
+        GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = dpToPx(24f).toFloat()
+            setColor(AndroidColor.argb(72, 245, 247, 250))
+        }
+
     private fun initializeToolbarPositionIfNeeded(params: LayoutParams) {
         if (viewModel.serviceState.value.toolbarPositionInitialized) return
         val (screenWidth, screenHeight) = getUsableScreenSize(windowManager)
@@ -303,7 +381,7 @@ class MainService : Service() {
     }
 
     private fun openSettings() {
-        if (settingsView?.isAttachedToWindow == true) return
+        if (settingsDialog?.isShowing == true) return
 
         val view = ComposeView(this).apply {
             setContent {
@@ -316,25 +394,34 @@ class MainService : Service() {
                 }
             }
         }
+        view.layoutParams = FrameLayout.LayoutParams(
+            LayoutParams.WRAP_CONTENT,
+            LayoutParams.WRAP_CONTENT
+        )
         toolbarLifecycleOwner.attachTo(view)
 
         val params = LayoutParams(
-            LayoutParams.MATCH_PARENT,
-            LayoutParams.MATCH_PARENT,
+            LayoutParams.WRAP_CONTENT,
+            LayoutParams.WRAP_CONTENT,
             LayoutParams.TYPE_APPLICATION_OVERLAY,
             LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
-        ).apply { gravity = Gravity.TOP or Gravity.START }
+        ).apply { gravity = Gravity.CENTER }
 
         settingsView = view
-        windowManager.addView(view, params)
+        settingsDialog = Dialog(this, R.style.Theme_DrawAnywhere_ToolbarWindow).apply {
+            requestWindowFeature(Window.FEATURE_NO_TITLE)
+            setCanceledOnTouchOutside(false)
+            setContentView(view)
+            window?.applySettingsWindowAttributes(params)
+            show()
+            window?.applySettingsWindowAttributes(params)
+        }
     }
 
     private fun closeSettings() {
-        val view = settingsView ?: return
-        if (view.isAttachedToWindow) {
-            windowManager.removeView(view)
-        }
+        settingsDialog?.dismiss()
+        settingsDialog = null
         settingsView = null
     }
 
@@ -682,11 +769,10 @@ class MainService : Service() {
             DrawSessionBridge.viewModel = null
         }
         serviceScope.cancel()
-        if (::toolbarView.isInitialized && toolbarView.isAttachedToWindow)
-            windowManager.removeView(toolbarView)
-        settingsView?.let { view ->
-            if (view.isAttachedToWindow) windowManager.removeView(view)
-        }
+        if (::toolbarDialog.isInitialized && toolbarDialog.isShowing)
+            toolbarDialog.dismiss()
+        settingsDialog?.dismiss()
+        settingsDialog = null
         settingsView = null
         if (::canvasView.isInitialized && canvasView.isAttachedToWindow)
             windowManager.removeView(canvasView)

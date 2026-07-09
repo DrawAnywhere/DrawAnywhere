@@ -1,5 +1,6 @@
 package com.shezik.drawanywhere
 
+import android.app.Activity
 import android.content.Intent
 import android.media.projection.MediaProjectionManager
 import android.os.Build
@@ -21,13 +22,22 @@ class ScreenCapturePermissionActivity : ComponentActivity() {
         } else {
             startService(serviceIntent)
         }
-        finish()
-        overridePendingTransition(0, 0)
+        finishWithoutTransition()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val mediaProjectionManager = getSystemService(MediaProjectionManager::class.java)
         permissionLauncher.launch(mediaProjectionManager.createScreenCaptureIntent())
+    }
+
+    private fun finishWithoutTransition() {
+        finish()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            overrideActivityTransition(Activity.OVERRIDE_TRANSITION_CLOSE, 0, 0)
+        } else {
+            @Suppress("DEPRECATION")
+            overridePendingTransition(0, 0)
+        }
     }
 }

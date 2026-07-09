@@ -5,6 +5,7 @@ import android.util.TypedValue
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -42,16 +43,6 @@ import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -87,9 +78,14 @@ import com.shezik.drawanywhere.model.PenConfig
 import com.shezik.drawanywhere.model.PenType
 import com.shezik.drawanywhere.ui.theme.DrawAnywhereTheme
 import kotlin.math.abs
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.ColorPalette
 import top.yukonga.miuix.kmp.basic.FloatingToolbar
+import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Slider
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.IconButton as MiuixIconButton
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -161,7 +157,7 @@ fun DrawToolbar(
             DraggableToolbarCard(
                 modifier = modifier
                     .widthIn(max = maxWidth)
-                    .padding(4.dp),
+                    .padding(0.dp),
                 haptics = haptics,
                 onPositionChange = viewModel::updateToolbarPosition,
                 onPositionSaved = viewModel::saveToolbarPosition,
@@ -319,19 +315,19 @@ private fun ToolbarShell(
     content: @Composable () -> Unit,
 ) {
     FloatingToolbar(
-        color = MiuixTheme.colorScheme.surfaceContainer.copy(alpha = 0.72f),
-        cornerRadius = 28.dp,
+        color = MiuixTheme.colorScheme.surfaceContainer.copy(alpha = 0.16f),
+        cornerRadius = 18.dp,
         outSidePadding = PaddingValues(0.dp),
         showDivider = false,
     ) {
         Box(
             modifier = Modifier
-                .clip(RoundedCornerShape(28.dp))
+                .clip(RoundedCornerShape(18.dp))
                 .background(
                     Brush.verticalGradient(
                         listOf(
-                            MiuixTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.76f),
-                            MiuixTheme.colorScheme.surfaceContainer.copy(alpha = 0.68f),
+                            MiuixTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.24f),
+                            MiuixTheme.colorScheme.surfaceContainer.copy(alpha = 0.14f),
                         )
                     )
                 ),
@@ -388,11 +384,14 @@ private fun ToolbarActionSegment(
     vertical: Boolean,
 ) {
     var saveMenuExpanded by remember { mutableStateOf(false) }
-    val passiveBg = MiuixTheme.colorScheme.surfaceVariant.copy(alpha = 0.26f)
+    val passiveBg = MiuixTheme.colorScheme.surfaceVariant.copy(alpha = 0.30f)
     val activeBg = MiuixTheme.colorScheme.primaryContainer.copy(alpha = 0.72f)
-    val iconColor = MiuixTheme.colorScheme.onBackground.copy(alpha = 0.88f)
+    val iconColor = MiuixTheme.colorScheme.onSurfaceContainer.copy(alpha = 0.88f)
 
-    Box {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
         val primaryActions: @Composable () -> Unit = {
             CompactActionButton(
                 icon = Icons.AutoMirrored.Filled.Redo,
@@ -461,8 +460,8 @@ private fun ToolbarActionSegment(
 
         Column(
             modifier = Modifier
-                .clip(RoundedCornerShape(18.dp))
-                .background(MiuixTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.28f))
+                .clip(RoundedCornerShape(14.dp))
+                .background(MiuixTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.20f))
                 .padding(3.dp),
             verticalArrangement = Arrangement.spacedBy(3.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -479,35 +478,63 @@ private fun ToolbarActionSegment(
             }
         }
 
-        DropdownMenu(
-            expanded = saveMenuExpanded,
-            onDismissRequest = { saveMenuExpanded = false },
-            containerColor = MiuixTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.88f),
-            tonalElevation = 0.dp,
-            shadowElevation = 8.dp,
-        ) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.save_transparent_png)) },
-                onClick = {
+        if (saveMenuExpanded) {
+            SaveMenuCard(
+                onSaveTransparent = {
                     saveMenuExpanded = false
                     onSaveTransparent()
                 },
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.save_backdrop_png)) },
-                onClick = {
+                onSaveWithBackdrop = {
                     saveMenuExpanded = false
                     onSaveWithBackdrop()
                 },
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.save_screen_backdrop_png)) },
-                onClick = {
+                onSaveWithScreenBackdrop = {
                     saveMenuExpanded = false
                     onSaveWithScreenBackdrop()
                 },
             )
         }
+    }
+}
+
+@Composable
+private fun SaveMenuCard(
+    onSaveTransparent: () -> Unit,
+    onSaveWithBackdrop: () -> Unit,
+    onSaveWithScreenBackdrop: () -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MiuixTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.56f),
+        contentColor = MiuixTheme.colorScheme.onSurfaceContainerHighest,
+        shadowElevation = 6.dp,
+    ) {
+        Column(modifier = Modifier.padding(vertical = 4.dp)) {
+            SaveMenuItem(text = stringResource(R.string.save_transparent_png), onClick = onSaveTransparent)
+            SaveMenuItem(text = stringResource(R.string.save_backdrop_png), onClick = onSaveWithBackdrop)
+            SaveMenuItem(text = stringResource(R.string.save_screen_backdrop_png), onClick = onSaveWithScreenBackdrop)
+        }
+    }
+}
+
+@Composable
+private fun SaveMenuItem(
+    text: String,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.widthIn(min = 172.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = Color.Transparent,
+        contentColor = MiuixTheme.colorScheme.onSurfaceContainer,
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            style = MiuixTheme.textStyles.body2,
+            color = MiuixTheme.colorScheme.onSurfaceContainer,
+        )
     }
 }
 
@@ -812,13 +839,14 @@ private fun ClearCanvasButton(
     vertical: Boolean,
     onClick: () -> Unit,
 ) {
-    Card(
+    Surface(
         onClick = onClick,
         modifier = if (vertical) Modifier.size(width = 66.dp, height = 34.dp)
         else Modifier.size(width = 34.dp, height = 66.dp),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFD96C6C).copy(alpha = 0.56f)),
+        color = Color.Transparent,
+        contentColor = Color(0xFFD96C6C),
+        border = BorderStroke(1.dp, Color(0xFFD96C6C).copy(alpha = 0.56f)),
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Icon(
@@ -883,30 +911,34 @@ private data class IconChoice(
     val selected: Boolean,
     val label: String,
     val onClick: () -> Unit,
-    val tint: Color = Color.White,
+    val tint: Color = Color.Unspecified,
 )
 
 @Composable
 private fun VerticalIconChoices(items: List<IconChoice>) {
+    val defaultTint = MiuixTheme.colorScheme.onSurfaceContainer
+    val selectedColor = MiuixTheme.colorScheme.primaryContainer.copy(alpha = 0.42f)
+    val selectedBorder = MiuixTheme.colorScheme.primary.copy(alpha = 0.64f)
+    val normalBorder = MiuixTheme.colorScheme.outline.copy(alpha = 0.42f)
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         items.forEach { item ->
-            Card(
+            val tint = if (item.tint == Color.Unspecified) defaultTint else item.tint
+            Surface(
                 onClick = item.onClick,
                 modifier = Modifier.size(30.dp),
                 shape = RoundedCornerShape(9.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (item.selected) Color.White.copy(alpha = 0.12f) else Color.Transparent
-                ),
-                border = androidx.compose.foundation.BorderStroke(
+                color = if (item.selected) selectedColor else Color.Transparent,
+                contentColor = tint,
+                border = BorderStroke(
                     1.dp,
-                    if (item.selected) Color.White.copy(alpha = 0.52f) else Color.White.copy(alpha = 0.22f)
+                    if (item.selected) selectedBorder else normalBorder
                 ),
             ) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = item.icon,
                         contentDescription = item.label,
-                        tint = item.tint.copy(alpha = if (item.selected) 0.96f else 0.78f),
+                        tint = tint.copy(alpha = if (item.selected) 0.96f else 0.78f),
                         modifier = Modifier.size(18.dp),
                     )
                 }
@@ -968,18 +1000,20 @@ private fun WidthChoices(
     formatter: (Float) -> String = { String.format("%.2f", it) },
     onMoreClick: () -> Unit,
 ) {
+    val textColor = MiuixTheme.colorScheme.onSurfaceContainer
+    val normalBorder = MiuixTheme.colorScheme.outline.copy(alpha = 0.48f)
     val widthButtons: @Composable () -> Unit = {
         valuesMm.forEach { mm ->
             val selected = abs(currentWidthPx - mmToPx(mm, metrics)) < 1.6f
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Card(
+                Surface(
                     onClick = { onSelected(mm) },
                     modifier = Modifier.size(28.dp),
                     shape = CircleShape,
-                    colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-                    border = androidx.compose.foundation.BorderStroke(
+                    color = Color.Transparent,
+                    border = BorderStroke(
                         2.dp,
-                        if (selected) Color(0xFF1A94FF) else Color.White.copy(alpha = 0.34f)
+                        if (selected) Color(0xFF1A94FF) else normalBorder
                     ),
                 ) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -993,8 +1027,8 @@ private fun WidthChoices(
                 }
                 Text(
                     text = formatter(mm),
-                    color = Color.White.copy(alpha = 0.92f),
-                    style = MaterialTheme.typography.labelSmall,
+                    color = textColor.copy(alpha = 0.92f),
+                    style = MiuixTheme.textStyles.body2,
                 )
             }
         }
@@ -1026,19 +1060,20 @@ private fun ColorCell(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    Card(
+    Surface(
         onClick = onClick,
         modifier = Modifier.size(width = 22.dp, height = 20.dp),
         shape = RoundedCornerShape(5.dp),
-        colors = CardDefaults.cardColors(containerColor = color),
-        border = if (selected) androidx.compose.foundation.BorderStroke(2.dp, Color.White) else null,
+        color = color,
+        contentColor = readableContentColor(color),
+        border = if (selected) BorderStroke(2.dp, MiuixTheme.colorScheme.primary) else null,
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             if (selected) {
                 Text(
                     text = "✓",
                     color = if (color == Color.White) Color.Black else Color.White,
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MiuixTheme.textStyles.body2,
                     fontWeight = FontWeight.Bold,
                 )
             }
@@ -1097,7 +1132,7 @@ private fun DragCollapseHandle(
     onTap: () -> Unit,
     compact: Boolean = false,
 ) {
-    Card(
+    Surface(
         modifier = Modifier
             .width(22.dp)
             .height(if (compact) 52.dp else 74.dp)
@@ -1130,10 +1165,9 @@ private fun DragCollapseHandle(
                     }
                 }
             },
-        onClick = {},
         shape = RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        color = Color.Transparent,
+        contentColor = MiuixTheme.colorScheme.onBackground,
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(
@@ -1175,8 +1209,9 @@ private fun SmallColorPopup(
 
         Surface(
             shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer,
-            tonalElevation = 6.dp,
+            color = MiuixTheme.colorScheme.surfaceContainer.copy(alpha = 0.94f),
+            contentColor = MiuixTheme.colorScheme.onSurfaceContainer,
+            shadowElevation = 6.dp,
         ) {
             Column(
                 modifier = Modifier.width(240.dp).padding(12.dp),
@@ -1189,8 +1224,8 @@ private fun SmallColorPopup(
                         MainTool.Laser -> stringResource(R.string.laser_color)
                         MainTool.Eraser -> stringResource(R.string.color)
                     },
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MiuixTheme.textStyles.subtitle,
+                    color = MiuixTheme.colorScheme.onSurfaceContainer,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     toolbarColors.take(5).forEach { color ->
@@ -1244,8 +1279,8 @@ private fun SmallColorPopup(
                 if (colorInput.isNotBlank() && parsedInput == null) {
                     Text(
                         text = stringResource(R.string.color_value_invalid),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
+                        style = MiuixTheme.textStyles.body2,
+                        color = MiuixTheme.colorScheme.error,
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1257,7 +1292,7 @@ private fun SmallColorPopup(
                         modifier = Modifier.weight(1f),
                         enabled = colorInput.isBlank() || parsedInput != null,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MiuixTheme.colorScheme.surfaceContainerHigh,
+                            color = MiuixTheme.colorScheme.secondaryVariant,
                             contentColor = MiuixTheme.colorScheme.onBackground,
                         ),
                     ) {
@@ -1271,7 +1306,7 @@ private fun SmallColorPopup(
                         modifier = Modifier.weight(1f),
                         enabled = colorInput.isBlank() || parsedInput != null,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = selectedColor,
+                            color = selectedColor,
                             contentColor = readableContentColor(selectedColor),
                         ),
                     ) {
@@ -1309,8 +1344,9 @@ private fun SmallWidthPopup(
     ) {
         Surface(
             shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer,
-            tonalElevation = 6.dp,
+            color = MiuixTheme.colorScheme.surfaceContainer.copy(alpha = 0.94f),
+            contentColor = MiuixTheme.colorScheme.onSurfaceContainer,
+            shadowElevation = 6.dp,
         ) {
             Column(
                 modifier = Modifier.width(220.dp).padding(12.dp),
@@ -1321,8 +1357,8 @@ private fun SmallWidthPopup(
                         MainTool.Eraser -> stringResource(R.string.custom_eraser_size)
                         else -> stringResource(R.string.custom_width)
                     },
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MiuixTheme.textStyles.subtitle,
+                    color = MiuixTheme.colorScheme.onSurfaceContainer,
                 )
                 if (savedCustomWidths.isNotEmpty()) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -1341,8 +1377,8 @@ private fun SmallWidthPopup(
                 }
                 Text(
                     text = if (tool == MainTool.Eraser) "${widthMm.toInt()}" else String.format("%.2f mm", widthMm),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MiuixTheme.textStyles.body1,
+                    color = MiuixTheme.colorScheme.onSurfaceContainer,
                 )
                 Slider(
                     value = widthMm,
@@ -1360,7 +1396,7 @@ private fun SmallWidthPopup(
                         },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MiuixTheme.colorScheme.primaryContainer,
+                            color = MiuixTheme.colorScheme.primary,
                             contentColor = MiuixTheme.colorScheme.onPrimaryContainer,
                         ),
                     ) {
@@ -1370,7 +1406,7 @@ private fun SmallWidthPopup(
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MiuixTheme.colorScheme.surfaceContainerHigh,
+                            color = MiuixTheme.colorScheme.secondaryVariant,
                             contentColor = MiuixTheme.colorScheme.onBackground,
                         ),
                     ) {
@@ -1388,18 +1424,17 @@ private fun WidthPresetChip(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    Card(
+    Surface(
         onClick = onClick,
         shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
-        ),
+        color = if (selected) MiuixTheme.colorScheme.primaryContainer else MiuixTheme.colorScheme.surfaceContainer,
+        contentColor = if (selected) MiuixTheme.colorScheme.onPrimaryContainer else MiuixTheme.colorScheme.onSurfaceContainer,
     ) {
         Text(
             text = label,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-            color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
-            style = MaterialTheme.typography.labelMedium,
+            color = if (selected) MiuixTheme.colorScheme.onPrimaryContainer else MiuixTheme.colorScheme.onSurfaceContainer,
+            style = MiuixTheme.textStyles.body2,
         )
     }
 }

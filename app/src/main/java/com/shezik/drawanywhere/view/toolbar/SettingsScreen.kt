@@ -26,6 +26,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,6 +38,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -51,6 +53,7 @@ import com.shezik.drawanywhere.model.StylusButtonAction
 import com.shezik.drawanywhere.model.StylusButtonScheme
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.ColorPalette
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
@@ -60,7 +63,8 @@ import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TextField
-import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.blur.layerBackdrop
+import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.preference.ArrowPreference
@@ -81,34 +85,45 @@ fun SettingsScreen(
     val activity = LocalContext.current as? Activity
     val close: () -> Unit = onClose ?: { activity?.finish() }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = MiuixTheme.colorScheme.surface,
-        topBar = {
-            TopAppBar(
-                title = stringResource(R.string.settings),
-                navigationIcon = {
-                    IconButton(onClick = close) {
-                        Icon(
-                            imageVector = MiuixIcons.Back,
-                            contentDescription = stringResource(R.string.back),
-                            tint = MiuixTheme.colorScheme.onBackground,
-                        )
-                    }
-                },
-            )
-        },
-        content = { paddingValues ->
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    start = 12.dp,
-                    top = paddingValues.calculateTopPadding() + 8.dp,
-                    end = 12.dp,
-                    bottom = paddingValues.calculateBottomPadding() + 20.dp,
-                ),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
+    val backdropBackground = MiuixTheme.colorScheme.surface.copy(alpha = 0.56f)
+    val backdrop = rememberLayerBackdrop {
+        drawRect(backdropBackground)
+        drawContent()
+    }
+
+    CompositionLocalProvider(
+        LocalMiuixBlurBackdrop provides backdrop,
+        LocalMiuixBlurEnabled provides true,
+    ) {
+        Scaffold(
+            modifier = modifier.fillMaxSize(),
+            containerColor = backdropBackground,
+            topBar = {
+                MiuixBlurTopAppBar(
+                    title = stringResource(R.string.settings),
+                    color = MiuixTheme.colorScheme.surface,
+                    navigationIcon = {
+                        IconButton(onClick = close) {
+                            Icon(
+                                imageVector = MiuixIcons.Back,
+                                contentDescription = stringResource(R.string.back),
+                                tint = MiuixTheme.colorScheme.onBackground,
+                            )
+                        }
+                    },
+                )
+            },
+            content = { paddingValues ->
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize().layerBackdrop(backdrop),
+                    contentPadding = PaddingValues(
+                        start = 12.dp,
+                        top = paddingValues.calculateTopPadding() + 8.dp,
+                        end = 12.dp,
+                        bottom = paddingValues.calculateBottomPadding() + 20.dp,
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
                 item {
                     PreferenceSection(title = stringResource(R.string.settings_toolbar_section)) {
                         OverlayDropdownPreference(
@@ -234,9 +249,10 @@ fun SettingsScreen(
                         AboutContent()
                     }
                 }
-            }
-        },
-    )
+                }
+            },
+        )
+    }
 }
 
 @Composable
@@ -246,24 +262,23 @@ fun FloatingSettingsWindow(
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val configuration = LocalConfiguration.current
+    val windowWidth = minOf(configuration.screenWidthDp.dp * 0.92f, 520.dp)
+    val windowHeight = minOf(configuration.screenHeightDp.dp * 0.86f, 720.dp)
+
     Box(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier,
         contentAlignment = Alignment.Center,
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.18f))
-                .clickable(onClick = onClose),
-        )
         Card(
             modifier = Modifier
-                .fillMaxWidth(0.92f)
-                .fillMaxHeight(0.86f)
-                .widthIn(max = 520.dp)
-                .heightIn(max = 720.dp)
-                .clip(RoundedCornerShape(28.dp)),
-            cornerRadius = 28.dp,
+                .size(width = windowWidth, height = windowHeight)
+                .clip(RoundedCornerShape(24.dp)),
+            cornerRadius = 24.dp,
+            colors = CardDefaults.defaultColors(
+                color = MiuixTheme.colorScheme.surfaceContainer.copy(alpha = 0.18f),
+                contentColor = MiuixTheme.colorScheme.onSurfaceContainer,
+            ),
         ) {
             SettingsScreen(
                 viewModel = viewModel,
@@ -281,7 +296,13 @@ private fun PreferenceSection(
     content: @Composable () -> Unit,
 ) {
     SmallTitle(text = title)
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.defaultColors(
+            color = MiuixTheme.colorScheme.surfaceContainer.copy(alpha = 0.34f),
+            contentColor = MiuixTheme.colorScheme.onSurfaceContainer,
+        ),
+    ) {
         content()
     }
 }
