@@ -40,6 +40,7 @@ import com.shezik.drawanywhere.view.DismissTargetView
 import com.shezik.drawanywhere.view.ToolbarLifecycleOwner
 import com.shezik.drawanywhere.view.canvas.NativeDrawCanvasView
 import com.shezik.drawanywhere.view.toolbar.DrawToolbar
+import com.shezik.drawanywhere.model.StylusButtonScheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -97,12 +98,11 @@ class MainService : Service() {
             LayoutParams.MATCH_PARENT,
             LayoutParams.MATCH_PARENT,
             LayoutParams.TYPE_APPLICATION_OVERLAY,
-            LayoutParams.FLAG_NOT_FOCUSABLE or
-                    LayoutParams.FLAG_NOT_TOUCH_MODAL or
+            LayoutParams.FLAG_NOT_TOUCH_MODAL or
                     LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         )
-        applyCanvasPassthrough(canvasParams, initialUiState.canvasPassthrough)
+        applyCanvasInputMode(canvasParams, initialUiState)
 
         // -------- Setup toolbar (Compose) --------
         toolbarLifecycleOwner.start()
@@ -154,9 +154,15 @@ class MainService : Service() {
         // Observe UI state changes
         serviceScope.launch {
             viewModel.uiState.collect { state ->
-                applyCanvasPassthrough(canvasParams, state.canvasPassthrough)
+                applyCanvasInputMode(canvasParams, state)
                 windowManager.updateViewLayout(canvasView, canvasParams)
                 canvasView.visibility = if (state.canvasVisible) View.VISIBLE else View.GONE
+                if (state.canvasVisible &&
+                    state.stylusButtonScheme != StylusButtonScheme.Disabled &&
+                    !state.canvasPassthrough
+                ) {
+                    canvasView.requestStylusKeyFocus()
+                }
             }
         }
 
@@ -190,11 +196,13 @@ class MainService : Service() {
         isRunning = true
     }
 
-    private fun applyCanvasPassthrough(params: LayoutParams, passthrough: Boolean) {
-        params.flags = if (passthrough)
-            params.flags or LayoutParams.FLAG_NOT_TOUCHABLE
-        else
-            params.flags and LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+    private fun applyCanvasInputMode(params: LayoutParams, state: UiState) {
+        var flags = LayoutParams.FLAG_NOT_TOUCH_MODAL or LayoutParams.FLAG_LAYOUT_IN_SCREEN
+        if (state.canvasPassthrough) flags = flags or LayoutParams.FLAG_NOT_TOUCHABLE
+        if (state.stylusButtonScheme == StylusButtonScheme.Disabled) {
+            flags = flags or LayoutParams.FLAG_NOT_FOCUSABLE
+        }
+        params.flags = flags
     }
 
     private fun applyToolbarPosition(params: LayoutParams, state: ServiceState) {

@@ -21,11 +21,13 @@ import android.view.MotionEvent
 import androidx.compose.ui.geometry.Offset
 import com.shezik.drawanywhere.DrawViewModel
 import com.shezik.drawanywhere.model.StrokeModifier
+import com.shezik.drawanywhere.model.StrokeSample
 import kotlin.math.sqrt
 
 private const val FINGER_HOVER_DELAY_MS = 300L
 private const val STYLUS_HOVER_DELAY_MS = 0L
 private const val HOVER_FADE_MS = 200L
+private const val PRESSURE_ERASER_RELEASE_GAP = 0.08f
 
 /**
  * @param point Current or last-known pointer position.
@@ -86,6 +88,7 @@ class CanvasTouchHandler(
     private var strokeInProgress: Boolean = false
     private var strokePending: Boolean = false
     private var pendingModifier: StrokeModifier = StrokeModifier.None
+    private var pressureEraserActive: Boolean = false
     private val pendingMovePoints = mutableListOf<Offset>()
     private var downTimeMs: Long = 0L
     private val fingerDebounceMs: Long = 50L
@@ -260,6 +263,7 @@ class CanvasTouchHandler(
             activePointerId = -1
             viewModel.finishStroke()
         }
+        pressureEraserActive = false
         strokePending = false
     }
 
@@ -319,8 +323,10 @@ class CanvasTouchHandler(
         val worldPt = vp.screenToWorld(Offset(event.x, event.y))
 
         if (isStylus) {
+            val sample = strokeSample(event, 0, null, vp)
+            pressureEraserActive = shouldPressureErase(sample, startingStroke = true)
             Log.d(TAG, "  → stylus DOWN: stroke started (ptr=#$activePointerId, mod=$pendingModifier)")
-            viewModel.startStroke(worldPt, pendingModifier)
+            viewModel.startStroke(sample, effectiveModifier())
             strokeInProgress = true
             strokePending = false
         } else {
@@ -371,12 +377,80 @@ class CanvasTouchHandler(
     private fun appendPointsToStroke(event: MotionEvent, vp: CanvasViewport) {
         val pi = event.findPointerIndex(activePointerId)
         if (pi < 0) return
-        for (i in 0 until event.historySize) {
-            viewModel.updateStroke(vp.screenToWorld(
-                Offset(event.getHistoricalX(pi, i), event.getHistoricalY(pi, i))))
+        val isStylus = event.getToolType(pi).let {
+            it == MotionEvent.TOOL_TYPE_STYLUS || it == MotionEvent.TOOL_TYPE_ERASER
         }
-        viewModel.updateStroke(vp.screenToWorld(
-            Offset(event.getX(pi), event.getY(pi))))
+        for (i in 0 until event.historySize) {
+            appendStrokeSample(strokeSample(event, pi, i, vp), isStylus)
+        }
+        appendStrokeSample(strokeSample(event, pi, null, vp), isStylus)
+    }
+
+    private fun appendStrokeSample(sample: StrokeSample, isStylus: Boolean) {
+        if (isStylus && viewModel.uiState.value.pressureEraserEnabled) {
+            val shouldErase = shouldPressureErase(sample, startingStroke = false)
+            if (shouldErase != pressureEraserActive) {
+                viewModel.finishStroke()
+                pressureEraserActive = shouldErase
+                viewModel.startStroke(sample, effectiveModifier())
+                return
+            }
+        }
+        viewModel.updateStroke(sample)
+    }
+
+    private fun effectiveModifier(): StrokeModifier =
+        if (pressureEraserActive) StrokeModifier.PrimaryButton else pendingModifier
+
+    private fun shouldPressureErase(sample: StrokeSample, startingStroke: Boolean): Boolean {
+        val state = viewModel.uiState.value
+        if (!state.pressureEraserEnabled) return false
+        if (startingStroke && state.currentPenType.isEraser) return false
+        if (!startingStroke && !pressureEraserActive && state.currentPenType.isEraser) return false
+
+        val enterThreshold = state.pressureEraserThreshold
+        val releaseThreshold = (enterThreshold - PRESSURE_ERASER_RELEASE_GAP).coerceAtLeast(0f)
+        return if (pressureEraserActive) {
+            sample.pressure > releaseThreshold
+        } else {
+            sample.pressure >= enterThreshold
+        }
+    }
+
+    private fun strokeSample(
+        event: MotionEvent,
+        pointerIndex: Int,
+        historyIndex: Int?,
+        vp: CanvasViewport,
+    ): StrokeSample {
+        val screenPoint = if (historyIndex == null) {
+            Offset(event.getX(pointerIndex), event.getY(pointerIndex))
+        } else {
+            Offset(event.getHistoricalX(pointerIndex, historyIndex), event.getHistoricalY(pointerIndex, historyIndex))
+        }
+        val pressure = if (historyIndex == null) {
+            event.getPressure(pointerIndex)
+        } else {
+            event.getHistoricalPressure(pointerIndex, historyIndex)
+        }
+        val tilt = if (historyIndex == null) {
+            event.getAxisValue(MotionEvent.AXIS_TILT, pointerIndex)
+        } else {
+            event.getHistoricalAxisValue(MotionEvent.AXIS_TILT, pointerIndex, historyIndex)
+        }
+        val orientation = if (historyIndex == null) {
+            event.getOrientation(pointerIndex)
+        } else {
+            event.getHistoricalOrientation(pointerIndex, historyIndex)
+        }
+        val timeMs = if (historyIndex == null) event.eventTime else event.getHistoricalEventTime(historyIndex)
+        return StrokeSample(
+            position = vp.screenToWorld(screenPoint),
+            pressure = pressure.coerceIn(0f, 1f),
+            tilt = tilt,
+            orientation = orientation,
+            timeMs = timeMs,
+        )
     }
 
     private fun onPointerUp(event: MotionEvent) {
@@ -399,6 +473,7 @@ class CanvasTouchHandler(
             activePointerId = -1
             viewModel.finishStroke()
         }
+        pressureEraserActive = false
         onInvalidate()
     }
 

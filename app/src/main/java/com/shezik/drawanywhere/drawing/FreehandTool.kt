@@ -3,6 +3,7 @@ package com.shezik.drawanywhere.drawing
 import androidx.compose.ui.geometry.Offset
 import com.shezik.drawanywhere.model.DrawAction
 import com.shezik.drawanywhere.model.Stroke
+import com.shezik.drawanywhere.model.StrokeSample
 
 /**
  * Freehand pen / laser — appends points on move.
@@ -10,9 +11,10 @@ import com.shezik.drawanywhere.model.Stroke
  */
 class FreehandTool(private val ctx: ToolContext) : StrokeTool {
 
-    override fun onStart(point: Offset) {
+    override fun onStart(sample: StrokeSample) {
         ctx.strokes.add(Stroke(
-            _points = mutableListOf(point),
+            _points = mutableListOf(sample.position),
+            _samples = mutableListOf(sample),
             color = ctx.penConfig.color,
             width = ctx.penConfig.width,
             alpha = ctx.penConfig.alpha,
@@ -20,9 +22,9 @@ class FreehandTool(private val ctx: ToolContext) : StrokeTool {
         ))
     }
 
-    override fun onMove(point: Offset) {
+    override fun onMove(sample: StrokeSample) {
         val stroke = ctx.strokes.lastOrNull() ?: return
-        stroke._points.add(point)
+        stroke.addSample(sample)
         stroke.modifiedAt = System.currentTimeMillis()
     }
 
