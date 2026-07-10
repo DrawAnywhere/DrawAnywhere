@@ -1,5 +1,6 @@
 package com.shezik.drawanywhere.view.toolbar
 
+import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,6 +28,9 @@ internal fun ToolbarControls(
     onChangeVisibleOnStart: (Boolean) -> Unit,
     fingerDrawingEnabled: Boolean,
     onChangeFingerDrawingEnabled: (Boolean) -> Unit,
+    exportTreeUri: String?,
+    onChooseSaveLocation: () -> Unit,
+    onResetSaveLocation: () -> Unit,
     onQuitApplication: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
@@ -68,6 +72,11 @@ internal fun ToolbarControls(
             isChecked = fingerDrawingEnabled,
             onCheckedChange = onChangeFingerDrawingEnabled
         )
+        SaveLocationControls(
+            exportTreeUri = exportTreeUri,
+            onChooseSaveLocation = onChooseSaveLocation,
+            onResetSaveLocation = onResetSaveLocation
+        )
         Button(
             onClick = onQuitApplication,
             modifier = Modifier.fillMaxWidth(),
@@ -77,6 +86,85 @@ internal fun ToolbarControls(
             ),
             shape = RoundedCornerShape(8.dp)
         ) { Text(text = stringResource(R.string.quit), style = MaterialTheme.typography.bodyMedium) }
+    }
+}
+
+@Composable
+internal fun SaveControls(
+    onSaveTransparent: () -> Unit,
+    onSaveWithBackdrop: () -> Unit,
+    onSaveWithScreenBackdrop: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        Text(
+            text = stringResource(R.string.save_drawing),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Button(
+            onClick = onSaveTransparent,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(Spacing.sm)
+        ) {
+            Text(text = stringResource(R.string.save_transparent_png))
+        }
+        Button(
+            onClick = onSaveWithBackdrop,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(Spacing.sm)
+        ) {
+            Text(text = stringResource(R.string.save_backdrop_png))
+        }
+        Button(
+            onClick = onSaveWithScreenBackdrop,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(Spacing.sm)
+        ) {
+            Text(text = stringResource(R.string.save_screen_backdrop_png))
+        }
+    }
+}
+
+@Composable
+private fun SaveLocationControls(
+    exportTreeUri: String?,
+    onChooseSaveLocation: () -> Unit,
+    onResetSaveLocation: () -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.sm),
+        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+    ) {
+        Text(
+            text = stringResource(R.string.save_location),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Text(
+            text = exportTreeUri?.toSaveLocationSummary()
+                ?: stringResource(R.string.save_location_default_summary),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            Button(
+                onClick = onChooseSaveLocation,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(Spacing.sm)
+            ) {
+                Text(text = stringResource(R.string.choose_folder))
+            }
+            OutlinedButton(
+                onClick = onResetSaveLocation,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = exportTreeUri != null,
+                shape = RoundedCornerShape(Spacing.sm)
+            ) {
+                Text(text = stringResource(R.string.restore_default))
+            }
+        }
     }
 }
 
@@ -169,3 +257,10 @@ internal fun CheckboxControl(
         )
     }
 }
+
+private fun String.toSaveLocationSummary(): String =
+    runCatching {
+        Uri.parse(this).lastPathSegment
+            ?.substringAfterLast(':')
+            ?.ifBlank { null }
+    }.getOrNull() ?: this

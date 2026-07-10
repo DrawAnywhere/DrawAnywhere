@@ -31,6 +31,10 @@ enum class ToolbarOrientation { HORIZONTAL, VERTICAL }
 @Composable
 fun DrawToolbar(
     viewModel: DrawViewModel,
+    onSaveTransparent: () -> Unit,
+    onSaveWithBackdrop: () -> Unit,
+    onSaveWithScreenBackdrop: () -> Unit,
+    onChooseSaveLocation: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -58,11 +62,17 @@ fun DrawToolbar(
         onPresetColorChange = viewModel::setPresetColor,
         onStrokeWidthChange = viewModel::setStrokeWidth,
         onAlphaChange = viewModel::setStrokeAlpha,
+        onSaveTransparent = onSaveTransparent,
+        onSaveWithBackdrop = onSaveWithBackdrop,
+        onSaveWithScreenBackdrop = onSaveWithScreenBackdrop,
         onChangeOrientation = viewModel::setToolbarOrientation,
         onChangeAutoClearCanvas = viewModel::setAutoClearCanvas,
         onChangeVisibleOnStart = viewModel::setVisibleOnStart,
         fingerDrawingEnabled = uiState.fingerDrawingEnabled,
         onChangeFingerDrawingEnabled = viewModel::setFingerDrawingEnabled,
+        exportTreeUri = uiState.exportTreeUri,
+        onChooseSaveLocation = onChooseSaveLocation,
+        onResetSaveLocation = viewModel::resetExportLocation,
         onCycleLockMode = viewModel::cycleLockMode,
         lockMode = lockMode,
         onQuitApplication = viewModel::quitApplication

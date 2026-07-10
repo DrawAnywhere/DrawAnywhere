@@ -45,6 +45,7 @@ class PreferencesManager(private val context: Context) {
         val VISIBLE_ON_START = booleanPreferencesKey("visible_on_start")
         val FINGER_DRAWING_ENABLED = booleanPreferencesKey("finger_drawing_enabled")
         val RECENT_COLORS = stringPreferencesKey("recent_colors")
+        val EXPORT_TREE_URI = stringPreferencesKey("export_tree_uri")
 
         // Pen-specific keys (for saving multiple pens)
         fun penColorKey(penType: PenType) = intPreferencesKey("${penType.name}_color")
@@ -103,6 +104,7 @@ class PreferencesManager(private val context: Context) {
                 try { Color(s.toLong(16).toInt()) } catch (_: Exception) { null }
             }
         else emptyList()
+        val exportTreeUri = preferences[PreferencesKeys.EXPORT_TREE_URI]
 
         return UiState(
             currentPenType = currentPenType,
@@ -115,6 +117,7 @@ class PreferencesManager(private val context: Context) {
             visibleOnStart = visibleOnStart,
             fingerDrawingEnabled = fingerDrawingEnabled,
             recentColors = recentColors,
+            exportTreeUri = exportTreeUri,
             canvasVisible = visibleOnStart,
             firstDrawerOpen = visibleOnStart
         )
@@ -128,6 +131,9 @@ class PreferencesManager(private val context: Context) {
             preferences[PreferencesKeys.VISIBLE_ON_START] = uiState.visibleOnStart
             preferences[PreferencesKeys.FINGER_DRAWING_ENABLED] = uiState.fingerDrawingEnabled
             preferences[PreferencesKeys.RECENT_COLORS] = uiState.recentColors.joinToString(",") { it.toArgb().toString(16).padStart(8, '0') }
+            uiState.exportTreeUri?.let {
+                preferences[PreferencesKeys.EXPORT_TREE_URI] = it
+            } ?: preferences.remove(PreferencesKeys.EXPORT_TREE_URI)
 
             // Save each pen's configuration
             for ((penType, config) in uiState.penConfigs) {
