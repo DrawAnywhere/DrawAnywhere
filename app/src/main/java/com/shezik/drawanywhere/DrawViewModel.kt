@@ -38,6 +38,8 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+const val DEFAULT_EXPORT_RELATIVE_PATH = "Pictures/DrawAnywhere"
+
 data class ServiceState(
     val toolbarPosition: Offset = Offset(32f, 64f),
     val toolbarActive: Boolean = true
@@ -50,6 +52,7 @@ data class UiState(
     val visibleOnStart: Boolean = true,
     val fingerDrawingEnabled: Boolean = true,
     val recentColors: List<Color> = emptyList(),
+    val exportTreeUri: String? = null,
 
     val currentPenType: PenType = PenType.Pen,
     val penConfigs: Map<PenType, PenConfig> = defaultPenConfigs(),
@@ -62,7 +65,7 @@ data class UiState(
         "undo", "clear", "tool_controls", "color_picker", "zoom_lock"
     ),
     val secondDrawerButtons: Set<String> = setOf(
-        "passthrough", "redo", "settings"
+        "passthrough", "redo", "save", "settings"
     ),
     val secondDrawerPinnedButtons: Set<String> = emptySet()
 ) {
@@ -304,6 +307,12 @@ class DrawViewModel(
 
     fun setFingerDrawingEnabled(state: Boolean) =
         _uiState.update { it.copy(fingerDrawingEnabled = state) }
+
+    fun setExportTreeUri(uri: String?) =
+        _uiState.update { it.copy(exportTreeUri = uri?.takeIf(String::isNotBlank)) }
+
+    fun resetExportLocation() =
+        setExportTreeUri(null)
 
     // --- Viewport ---
 

@@ -71,11 +71,17 @@ internal fun createAllToolbarButtons(
     onPresetColorChange: (Color) -> Unit = onColorChange,
     onStrokeWidthChange: (Float) -> Unit,
     onAlphaChange: (Float) -> Unit,
+    onSaveTransparent: () -> Unit,
+    onSaveWithBackdrop: () -> Unit,
+    onSaveWithScreenBackdrop: () -> Unit,
     onChangeOrientation: (ToolbarOrientation) -> Unit,
     onChangeAutoClearCanvas: (Boolean) -> Unit,
     onChangeVisibleOnStart: (Boolean) -> Unit,
     fingerDrawingEnabled: Boolean,
     onChangeFingerDrawingEnabled: (Boolean) -> Unit,
+    exportTreeUri: String?,
+    onChooseSaveLocation: () -> Unit,
+    onResetSaveLocation: () -> Unit,
     onCycleLockMode: () -> Unit,
     lockMode: LockMode,
     onQuitApplication: () -> Unit
@@ -151,6 +157,20 @@ internal fun createAllToolbarButtons(
         onClick = onRedo
     ),
     ToolbarButton(
+        id = "save",
+        icon = Icons.Default.SaveAlt,
+        contentDescription = stringResource(R.string.save_drawing),
+        popupPages = listOf(
+            {
+                SaveControls(
+                    onSaveTransparent = onSaveTransparent,
+                    onSaveWithBackdrop = onSaveWithBackdrop,
+                    onSaveWithScreenBackdrop = onSaveWithScreenBackdrop
+                )
+            }
+        )
+    ),
+    ToolbarButton(
         id = "settings",
         icon = Icons.Default.Tune,
         contentDescription = stringResource(R.string.settings),
@@ -164,6 +184,9 @@ internal fun createAllToolbarButtons(
                 onChangeVisibleOnStart = onChangeVisibleOnStart,
                 fingerDrawingEnabled = fingerDrawingEnabled,
                 onChangeFingerDrawingEnabled = onChangeFingerDrawingEnabled,
+                exportTreeUri = exportTreeUri,
+                onChooseSaveLocation = onChooseSaveLocation,
+                onResetSaveLocation = onResetSaveLocation,
                 onQuitApplication = onQuitApplication
             ) },
             { AboutScreen() }
